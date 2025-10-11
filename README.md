@@ -4,8 +4,8 @@ Welcome to **FSMModule**, a lightweight and extensible Finite State Machine fram
 
 Please select your language:
 
-- 🇬🇧 [English Documentation](./docs/en/README.md)
-- 🇷🇺 [Документация на русском](./docs/ru/README.md)
+- 🇬🇧 [English Documentation](/Assets/Game/Readme/en/README.md)
+- 🇷🇺 [Документация на русском](Assets/Game/Readme/ru/README.md)
 
 ---
 
