@@ -37,7 +37,8 @@ FSMModule/
 ## 🔁 Logical FSM Flow
 
 ```mermaid
-flowchart LR
+flowchart
+LR
     A[State (IState)] --> B[Transition (IStateTransition)]
     B --> C[State Machine (StateMachine)]
     C --> D[Auto Machine (AutoStateMachine)]
