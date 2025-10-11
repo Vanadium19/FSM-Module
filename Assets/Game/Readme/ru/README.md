@@ -37,11 +37,11 @@ FSMModule/
 ## 🔁 Логическая схема работы FSM
 
 ```mermaid
-flowchart LR
-    A[State (IState)] --> B[Transition (IStateTransition)]
-    B --> C[State Machine (StateMachine)]
-    C --> D[Auto Machine (AutoStateMachine)]
-    D -->|OnUpdate()| A
+flowchart TD
+    A["State: IState"] --> B["Transition: IStateTransition"]
+    B --> C["StateMachine"]
+    C --> D["AutoStateMachine"]
+    D -->|"OnUpdate()"| A
 ```
 
 ---
