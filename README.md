@@ -38,9 +38,9 @@ FSMModule/
 
 ```mermaid
 flowchart LR
-    A[Состояние (IState)] --> B[Переход (IStateTransition)]
-    B --> C[Машина состояний (StateMachine)]
-    C --> D[Автоматическая машина (AutoStateMachine)]
+    A[State (IState)] --> B[Transition (IStateTransition)]
+    B --> C[State Machine (StateMachine)]
+    C --> D[Auto Machine (AutoStateMachine)]
     D -->|OnUpdate()| A
 ```
 
@@ -190,6 +190,17 @@ classDiagram
 - Расширяемость через композицию и декораторы  
 - Поддержка автоматических переходов  
 - Легко интегрируется с Unity, серверной логикой или консольными приложениями
+
+---
+
+## 🧩 Возможные расширения
+
+- История состояний (Stack FSM)  
+- Асинхронные состояния (через `Task` / `UniTask`)  
+- Визуальный редактор FSM  
+- Логирование и отладка переходов  
+- Поддержка событийных переходов (event-driven FSM)  
+- Интеграция с Behavior Trees или AI Graphs  
 
 ---
 
