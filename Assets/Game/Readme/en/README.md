@@ -38,7 +38,7 @@ FSMModule/
 
 ```mermaid
 flowchart
-LR
+TD
     A[State (IState)] --> B[Transition (IStateTransition)]
     B --> C[State Machine (StateMachine)]
     C --> D[Auto Machine (AutoStateMachine)]
