@@ -74,11 +74,11 @@ MonoBehaviour:
   states:
   - id: bd6cf36d541e4268a901354f9337bc89
     name: Patrol
-    position: {x: 354, y: 265}
+    position: {x: 468, y: -32}
     state: {fileID: -4790437797965550498}
   - id: 07176213d6d044388c830c7aed9e95bc
     name: Attack
-    position: {x: 513, y: 41}
+    position: {x: 470, y: 180}
     state: {fileID: -7162858787573771227}
   transitions:
   - id: e771bbf1c5c44fa6978e2136ef03e6e9

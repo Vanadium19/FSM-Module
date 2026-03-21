@@ -78,8 +78,8 @@ namespace FSMModule.Graph.Editor
 
         private void OnEnable()
         {
-            if (_graph == null && Selection.activeObject is FsmGraphAsset graph)
-                _graph = graph;
+            if (_graph == null && TryGetGraphFromSelection(out var graph))
+                SetGraph(graph);
         }
 
         private void OnDisable()
@@ -90,7 +90,7 @@ namespace FSMModule.Graph.Editor
 
         private void OnSelectionChange()
         {
-            if (Selection.activeObject is FsmGraphAsset graph)
+            if (TryGetGraphFromSelection(out var graph))
             {
                 SetGraph(graph);
                 Repaint();
@@ -121,14 +121,10 @@ namespace FSMModule.Graph.Editor
         {
             using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar, GUILayout.Height(ToolbarHeight)))
             {
-                var updatedGraph = (FsmGraphAsset)EditorGUILayout.ObjectField(
-                    _graph,
-                    typeof(FsmGraphAsset),
-                    false,
-                    GUILayout.Width(260f));
-
-                if (updatedGraph != _graph)
-                    SetGraph(updatedGraph);
+                GUILayout.Label(
+                    _graph != null ? $"Graph: {_graph.name}" : "Select an FSM graph asset or a scene object with FsmGraphRunner",
+                    EditorStyles.miniLabel,
+                    GUILayout.Width(320f));
 
                 using (new EditorGUI.DisabledScope(_graph == null))
                 {
@@ -159,17 +155,8 @@ namespace FSMModule.Graph.Editor
             {
                 EditorGUILayout.LabelField("FSM Graph Editor", EditorStyles.boldLabel);
                 EditorGUILayout.HelpBox(
-                    "Create or select an FsmGraphAsset to start building a state graph.",
+                    "Select an FSM graph asset in the Project view or a scene object with FsmGraphRunner to open its graph.",
                     MessageType.Info);
-
-                var selectedGraph = (FsmGraphAsset)EditorGUILayout.ObjectField(
-                    "Graph Asset",
-                    _graph,
-                    typeof(FsmGraphAsset),
-                    false);
-
-                if (selectedGraph != _graph)
-                    SetGraph(selectedGraph);
             }
             GUILayout.FlexibleSpace();
         }
@@ -306,7 +293,7 @@ namespace FSMModule.Graph.Editor
         private void DrawGraphSection()
         {
             EditorGUILayout.LabelField("Graph", EditorStyles.boldLabel);
-            EditorGUILayout.ObjectField("Asset", _graph, typeof(FsmGraphAsset), false);
+            EditorGUILayout.LabelField("Asset", _graph != null ? _graph.name : "<None>");
 
             if (_graph.States.Count == 0)
             {
@@ -328,7 +315,7 @@ namespace FSMModule.Graph.Editor
 
         private void DrawBlackboardSection()
         {
-            EditorGUILayout.LabelField("Blackboard Parameters", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Parameters", EditorStyles.boldLabel);
 
             using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
             {
@@ -348,9 +335,9 @@ namespace FSMModule.Graph.Editor
                 }
 
                 if (_graph.BlackboardParameters.Count == 0)
-                    EditorGUILayout.HelpBox("No blackboard parameters yet. Use + to add Float, Int or Bool.", MessageType.None);
+                    EditorGUILayout.HelpBox("No parameters yet. Use + to add Float, Int or Bool.", MessageType.None);
                 else if (visibleParameterCount == 0)
-                    EditorGUILayout.HelpBox("No blackboard parameters match the current search.", MessageType.None);
+                    EditorGUILayout.HelpBox("No parameters match the current search.", MessageType.None);
             }
         }
 
@@ -1223,6 +1210,41 @@ namespace FSMModule.Graph.Editor
         {
             var canvasOrigin = new Vector2(0f, ToolbarHeight);
             return mousePosition - canvasOrigin - _canvasPan;
+        }
+
+        private static bool TryGetGraphFromSelection(out FsmGraphAsset graph)
+        {
+            graph = null;
+
+            if (Selection.activeObject is FsmGraphAsset selectedGraph)
+            {
+                graph = selectedGraph;
+                return true;
+            }
+
+            if (Selection.activeObject is FsmGraphRunner selectedRunner && selectedRunner.Graph != null)
+            {
+                graph = selectedRunner.Graph;
+                return true;
+            }
+
+            if (Selection.activeGameObject != null &&
+                Selection.activeGameObject.TryGetComponent<FsmGraphRunner>(out var selectedGameObjectRunner) &&
+                selectedGameObjectRunner.Graph != null)
+            {
+                graph = selectedGameObjectRunner.Graph;
+                return true;
+            }
+
+            if (Selection.activeObject is Component component &&
+                component.TryGetComponent<FsmGraphRunner>(out var selectedComponentRunner) &&
+                selectedComponentRunner.Graph != null)
+            {
+                graph = selectedComponentRunner.Graph;
+                return true;
+            }
+
+            return false;
         }
 
         private void SetGraph(FsmGraphAsset graph)
