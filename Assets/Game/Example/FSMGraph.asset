@@ -28,8 +28,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c3585a862f0e4f8db209950dd9712ad1, type: 3}
   m_Name: State 1 PatrolBetweenBindingsStateBehaviour
   m_EditorClassIdentifier: FSMExampleModule::FSMModule.Examples.PatrolBetweenBindingsStateBehaviour
-  pointAKey: PatrolPointA
-  pointBKey: PatrolPointB
   speed: 2
   reachDistance: 0.05
 --- !u!114 &-3791568146975113576
@@ -60,13 +58,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: FSMGraphModule::FSMModule.Graph.FsmGraphAsset
   initialStateId: bd6cf36d541e4268a901354f9337bc89
   blackboardParameters:
-  - key: Test
+  - key: Parameter
     type: 0
-    boolValue: 0
-    intValue: 0
-    floatValue: 0
-  - key: Speed
-    type: 2
     boolValue: 0
     intValue: 0
     floatValue: 0
@@ -78,7 +71,7 @@ MonoBehaviour:
   states:
   - id: bd6cf36d541e4268a901354f9337bc89
     name: Patrol
-    position: {x: 154, y: 118}
+    position: {x: 153, y: 118}
     state: {fileID: -4790437797965550498}
   - id: 07176213d6d044388c830c7aed9e95bc
     name: Attack

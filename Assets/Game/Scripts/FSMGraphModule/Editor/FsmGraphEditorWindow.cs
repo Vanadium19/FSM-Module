@@ -132,9 +132,6 @@ namespace FSMModule.Graph.Editor
                     if (GUILayout.Button("Add Parameter", EditorStyles.toolbarButton, GUILayout.Width(100f)))
                         AddBlackboardParameter();
 
-                    if (GUILayout.Button("Add Binding", EditorStyles.toolbarButton, GUILayout.Width(90f)))
-                        AddBindingDefinition();
-
                     if (GUILayout.Button("Frame Graph", EditorStyles.toolbarButton, GUILayout.Width(90f)))
                         FrameGraph();
                 }
@@ -288,8 +285,6 @@ namespace FSMModule.Graph.Editor
             EditorGUILayout.Space();
             DrawBlackboardSection();
             EditorGUILayout.Space();
-            DrawBindingsSection();
-            EditorGUILayout.Space();
             DrawSelectionSection();
 
             EditorGUILayout.EndScrollView();
@@ -386,52 +381,6 @@ namespace FSMModule.Graph.Editor
 
             if (GUILayout.Button("Add Blackboard Parameter"))
                 AddBlackboardParameter();
-        }
-
-        private void DrawBindingsSection()
-        {
-            EditorGUILayout.LabelField("Binding Slots", EditorStyles.boldLabel);
-
-            if (_graph.BindingDefinitions.Count == 0)
-                EditorGUILayout.HelpBox("No binding slots yet.", MessageType.None);
-
-            for (var i = 0; i < _graph.BindingDefinitions.Count; i++)
-            {
-                var binding = _graph.BindingDefinitions[i];
-                if (binding == null)
-                    continue;
-
-                using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
-                {
-                    var updatedKey = binding.Key;
-                    var updatedDescription = binding.Description;
-
-                    using (new EditorGUILayout.HorizontalScope())
-                    {
-                        updatedKey = EditorGUILayout.TextField("Key", binding.Key);
-                        if (GUILayout.Button("X", GUILayout.Width(24f)))
-                        {
-                            RecordGraph("Remove Binding");
-                            _graph.BindingDefinitions.RemoveAt(i);
-                            MarkDirty();
-                            return;
-                        }
-                    }
-
-                    updatedDescription = EditorGUILayout.TextField("Description", binding.Description);
-
-                    if (updatedKey != binding.Key || updatedDescription != binding.Description)
-                    {
-                        RecordGraph("Edit Binding Slot");
-                        binding.Key = updatedKey;
-                        binding.Description = updatedDescription;
-                        MarkDirty();
-                    }
-                }
-            }
-
-            if (GUILayout.Button("Add Binding Slot"))
-                AddBindingDefinition();
         }
 
         private void DrawSelectionSection()
@@ -795,13 +744,6 @@ namespace FSMModule.Graph.Editor
         {
             RecordGraph("Add Blackboard Parameter");
             _graph.BlackboardParameters.Add(new FsmBlackboardParameterDefinition());
-            MarkDirty();
-        }
-
-        private void AddBindingDefinition()
-        {
-            RecordGraph("Add Binding Slot");
-            _graph.BindingDefinitions.Add(new FsmBindingDefinition());
             MarkDirty();
         }
 

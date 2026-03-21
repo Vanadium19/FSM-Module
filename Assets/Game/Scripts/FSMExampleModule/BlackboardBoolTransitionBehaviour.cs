@@ -5,6 +5,7 @@ namespace FSMModule.Examples
 {
     public sealed class BlackboardBoolTransitionBehaviour : FsmTransitionBehaviour
     {
+        [FsmBlackboardKey(BlackboardParameterType.Bool)]
         [SerializeField] private string key = PatrolAttackExampleKeys.ShouldAttack;
         [SerializeField] private bool expectedValue = true;
 

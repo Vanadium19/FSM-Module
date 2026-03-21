@@ -25,7 +25,10 @@ namespace FSMModule.Graph
         public List<FsmGraphStateNode> States => states;
         public List<FsmGraphTransition> Transitions => transitions;
 
-        public FsmGraphRuntime CreateRuntime(FsmContext context)
+        public FsmGraphRuntime CreateRuntime(
+            FsmContext context,
+            IReadOnlyList<FsmInjectedFieldBinding> injectedBindings = null,
+            Object logContext = null)
         {
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
@@ -43,6 +46,12 @@ namespace FSMModule.Graph
                 var runtimeState = Instantiate(stateNode.State);
                 runtimeState.name = $"{stateNode.Name} Runtime";
                 runtimeState.hideFlags = HideFlags.HideAndDontSave;
+                FsmBehaviourInjectionUtility.ApplyInjectedFields(
+                    runtimeState,
+                    FsmGraphBehaviourOwnerKind.State,
+                    stateNode.Id,
+                    injectedBindings,
+                    logContext);
                 runtimeState.Initialize(context);
 
                 runtimeObjects.Add(runtimeState);
@@ -62,6 +71,12 @@ namespace FSMModule.Graph
                 var runtimeTransition = Instantiate(transition.Transition);
                 runtimeTransition.name = $"{transition.FromStateId} -> {transition.ToStateId} Runtime";
                 runtimeTransition.hideFlags = HideFlags.HideAndDontSave;
+                FsmBehaviourInjectionUtility.ApplyInjectedFields(
+                    runtimeTransition,
+                    FsmGraphBehaviourOwnerKind.Transition,
+                    transition.Id,
+                    injectedBindings,
+                    logContext);
                 runtimeTransition.Initialize(context);
 
                 runtimeObjects.Add(runtimeTransition);
