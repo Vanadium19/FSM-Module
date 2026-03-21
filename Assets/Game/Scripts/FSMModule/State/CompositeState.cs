@@ -14,12 +14,12 @@ namespace FSMModule
 
         public CompositeState(IEnumerable<IState> states)
         {
-            _states = new List<IState>(states);
+            _states = new(states);
         }
 
         public CompositeState(params IState[] states)
         {
-            _states = new List<IState>(states);
+            _states = new(states);
         }
 
         public void AddState(IState state)

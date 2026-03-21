@@ -13,13 +13,10 @@ namespace FSMModule
 
             _condition = condition;
         }
-        
+
         public TKey From { get; }
         public TKey To { get; }
 
-        public bool CanPerform()
-        {
-            return _condition == null || _condition.Invoke();
-        }
+        public bool CanPerform() => _condition == null || _condition.Invoke();
     }
 }

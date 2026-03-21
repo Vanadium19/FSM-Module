@@ -19,9 +19,9 @@ namespace FSMModule
 
         public StateMachine()
         {
-            _states = new Dictionary<TKey, IState>();
+            _states = new();
             _currentKey = default;
-            _currentState = default;
+            _currentState = null;
         }
 
         public StateMachine(TKey initialState, params (TKey, IState)[] states)
@@ -49,7 +49,7 @@ namespace FSMModule
             if (states == null)
                 throw new ArgumentNullException(nameof(states));
 
-            _states = new Dictionary<TKey, IState>(states);
+            _states = new(states);
             _currentKey = initialState;
             _currentState = _states[_currentKey];
         }
@@ -59,7 +59,7 @@ namespace FSMModule
             if (states == null)
                 throw new ArgumentNullException(nameof(states));
 
-            _states = new Dictionary<TKey, IState>(states);
+            _states = new(states);
             _currentKey = initialState;
             _currentState = _states[_currentKey];
         }
@@ -68,20 +68,11 @@ namespace FSMModule
         public TKey CurrentState => _currentKey;
         public IReadOnlyCollection<TKey> States => _states.Keys;
 
-        public void OnEnter()
-        {
-            _currentState?.OnEnter();
-        }
+        public void OnEnter() => _currentState?.OnEnter();
 
-        public void OnUpdate(float deltaTime)
-        {
-            _currentState?.OnUpdate(deltaTime);
-        }
+        public void OnUpdate(float deltaTime) => _currentState?.OnUpdate(deltaTime);
 
-        public void OnExit()
-        {
-            _currentState?.OnExit();
-        }
+        public void OnExit() => _currentState?.OnExit();
 
         public bool AddState(TKey key, IState state)
         {
@@ -104,10 +95,7 @@ namespace FSMModule
             return true;
         }
 
-        public bool ContainsState(TKey key)
-        {
-            return _states.ContainsKey(key);
-        }
+        public bool ContainsState(TKey key) => _states.ContainsKey(key);
 
         public bool TryChangeState(TKey key)
         {

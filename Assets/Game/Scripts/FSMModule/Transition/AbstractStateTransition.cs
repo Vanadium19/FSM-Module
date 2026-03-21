@@ -7,7 +7,7 @@
             From = from;
             To = to;
         }
-        
+
         public TKey From { get; }
         public TKey To { get; }
 

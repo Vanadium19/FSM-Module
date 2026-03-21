@@ -2,8 +2,8 @@
 {
     public interface IState
     {
-        public void OnEnter();
-        public void OnUpdate(float deltaTime);
-        public void OnExit();
+        void OnEnter();
+        void OnUpdate(float deltaTime);
+        void OnExit();
     }
 }

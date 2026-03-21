@@ -5,19 +5,19 @@ namespace FSMModule
 {
     public interface IStateMachine<TKey> : IState
     {
-        public event Action<TKey> OnStateAdded;
-        public event Action<TKey> OnStateChanged;
-        public event Action<TKey> OnStateRemoved;
+        event Action<TKey> OnStateAdded;
+        event Action<TKey> OnStateChanged;
+        event Action<TKey> OnStateRemoved;
 
-        public int StateCount { get; }
-        public TKey CurrentState { get; }
-        public IReadOnlyCollection<TKey> States { get; }
+        int StateCount { get; }
+        TKey CurrentState { get; }
+        IReadOnlyCollection<TKey> States { get; }
 
-        public bool AddState(TKey key, IState state);
-        public bool RemoveState(TKey key);
-        public bool ContainsState(TKey key);
+        bool AddState(TKey key, IState state);
+        bool RemoveState(TKey key);
+        bool ContainsState(TKey key);
 
-        public bool TryChangeState(TKey key);
-        public void ChangeState(TKey key);
+        bool TryChangeState(TKey key);
+        void ChangeState(TKey key);
     }
 }

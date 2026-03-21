@@ -15,19 +15,10 @@ namespace FSMModule
             _onExit = onExit;
         }
 
-        public void OnEnter()
-        {
-            _onEnter?.Invoke();
-        }
+        public void OnEnter() => _onEnter?.Invoke();
 
-        public void OnUpdate(float deltaTime)
-        {
-            _onUpdate?.Invoke(deltaTime);
-        }
+        public void OnUpdate(float deltaTime) => _onUpdate?.Invoke(deltaTime);
 
-        public void OnExit()
-        {
-            _onExit?.Invoke();
-        }
+        public void OnExit() => _onExit?.Invoke();
     }
 }

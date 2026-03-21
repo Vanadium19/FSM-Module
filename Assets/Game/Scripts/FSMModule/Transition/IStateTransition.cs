@@ -1,10 +1,10 @@
 ﻿namespace FSMModule
 {
-    public interface IStateTransition<TKey>
+    public interface IStateTransition<out TKey>
     {
-        public TKey From { get; }
-        public TKey To { get; }
+        TKey From { get; }
+        TKey To { get; }
 
-        public bool CanPerform();
+        bool CanPerform();
     }
 }

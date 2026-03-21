@@ -30,35 +30,33 @@ namespace FSMModule
 
         public event Action<IStateTransition<TKey>> OnTransitionAdded;
         public event Action<IStateTransition<TKey>> OnTransitionRemoved;
-        
+
         public AutoStateMachine(TKey initialState,
             IEnumerable<(TKey, IState)> states,
-            IEnumerable<IStateTransition<TKey>> transitions
-        )
+            IEnumerable<IStateTransition<TKey>> transitions)
         {
             _stateMachine = new StateMachine<TKey>(initialState, states);
-            _transitions = new List<IStateTransition<TKey>>(transitions);
+            _transitions = new(transitions);
         }
 
         public AutoStateMachine(TKey initialState,
             IEnumerable<KeyValuePair<TKey, IState>> states,
-            IEnumerable<IStateTransition<TKey>> transitions
-        )
+            IEnumerable<IStateTransition<TKey>> transitions)
         {
             _stateMachine = new StateMachine<TKey>(initialState, states);
-            _transitions = new List<IStateTransition<TKey>>(transitions);
+            _transitions = new(transitions);
         }
 
         public AutoStateMachine(IStateMachine<TKey> stateMachine, IEnumerable<IStateTransition<TKey>> transitions)
         {
             _stateMachine = stateMachine ?? throw new ArgumentNullException(nameof(stateMachine));
-            _transitions = new List<IStateTransition<TKey>>(transitions);
+            _transitions = new(transitions);
         }
 
         public AutoStateMachine(IStateMachine<TKey> stateMachine, params IStateTransition<TKey>[] transitions)
         {
             _stateMachine = stateMachine ?? throw new ArgumentNullException(nameof(stateMachine));
-            _transitions = new List<IStateTransition<TKey>>(transitions);
+            _transitions = new(transitions);
         }
 
         public int StateCount => _stateMachine.StateCount;
@@ -68,10 +66,7 @@ namespace FSMModule
         public int TransitionCount => _transitions.Count;
         public IEnumerable<(TKey, TKey)> Transitions => GetTransitions();
 
-        public void OnEnter()
-        {
-            _stateMachine.OnEnter();
-        }
+        public void OnEnter() => _stateMachine.OnEnter();
 
         public void OnUpdate(float deltaTime)
         {
@@ -80,35 +75,17 @@ namespace FSMModule
             _stateMachine.OnUpdate(deltaTime);
         }
 
-        public void OnExit()
-        {
-            _stateMachine.OnExit();
-        }
+        public void OnExit() => _stateMachine.OnExit();
 
-        public bool AddState(TKey key, IState state)
-        {
-            return _stateMachine.AddState(key, state);
-        }
+        public bool AddState(TKey key, IState state) => _stateMachine.AddState(key, state);
 
-        public bool RemoveState(TKey key)
-        {
-            return _stateMachine.RemoveState(key);
-        }
+        public bool RemoveState(TKey key) => _stateMachine.RemoveState(key);
 
-        public bool ContainsState(TKey key)
-        {
-            return _stateMachine.ContainsState(key);
-        }
+        public bool ContainsState(TKey key) => _stateMachine.ContainsState(key);
 
-        public bool TryChangeState(TKey key)
-        {
-            return _stateMachine.TryChangeState(key);
-        }
+        public bool TryChangeState(TKey key) => _stateMachine.TryChangeState(key);
 
-        public void ChangeState(TKey key)
-        {
-            _stateMachine.ChangeState(key);
-        }
+        public void ChangeState(TKey key) => _stateMachine.ChangeState(key);
 
         public bool AddTransition(IStateTransition<TKey> transition)
         {
@@ -139,41 +116,33 @@ namespace FSMModule
         {
             if (!_transitions.Remove(transition))
                 return false;
-            
+
             OnTransitionRemoved?.Invoke(transition);
             return true;
         }
 
-        public bool RemoveTransition(TKey from, TKey to)
-        {
-            return FindTransition(from, to, out IStateTransition<TKey> transition) && RemoveTransition(transition);
-        }
+        public bool RemoveTransition(TKey from, TKey to) =>
+            FindTransition(from, to, out IStateTransition<TKey> transition) && RemoveTransition(transition);
 
-        public bool ContainsTransition(IStateTransition<TKey> transition)
-        {
-            return _transitions.Contains(transition);
-        }
+        public bool ContainsTransition(IStateTransition<TKey> transition) => _transitions.Contains(transition);
 
-        public bool ContainsTransition(TKey from, TKey to)
-        {
-            return FindTransition(from, to, out _);
-        }
+        public bool ContainsTransition(TKey from, TKey to) => FindTransition(from, to, out var _);
 
         private void UpdateTransitions()
         {
             if (_transitions.Count <= 0)
                 return;
-            
-            TKey currentState = _stateMachine.CurrentState;
-            
+
+            var currentState = _stateMachine.CurrentState;
+
             foreach (var transition in _transitions)
             {
                 if (!_comparer.Equals(transition.From, currentState))
                     continue;
-                
+
                 if (!transition.CanPerform())
                     continue;
-                
+
                 _stateMachine.ChangeState(transition.To);
                 break;
             }
@@ -190,14 +159,14 @@ namespace FSMModule
                 }
             }
 
-            result = default;
+            result = null;
             return false;
         }
 
         private IEnumerable<(TKey, TKey)> GetTransitions()
         {
             foreach (var transition in _transitions)
-                yield return new ValueTuple<TKey, TKey>(transition.From, transition.To);
+                yield return new(transition.From, transition.To);
         }
     }
 }
