@@ -1,0 +1,109 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-7162858787573771227
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c28e350bba714106b6f268cf50ad510b, type: 3}
+  m_Name: State 2 DebugLogStateBehaviour
+  m_EditorClassIdentifier: FSMExampleModule::FSMModule.Examples.DebugLogStateBehaviour
+  enterMessage: Enter State
+  exitMessage: Exit State
+  logOnEnter: 1
+  logOnExit: 1
+--- !u!114 &-4790437797965550498
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c3585a862f0e4f8db209950dd9712ad1, type: 3}
+  m_Name: State 1 PatrolBetweenBindingsStateBehaviour
+  m_EditorClassIdentifier: FSMExampleModule::FSMModule.Examples.PatrolBetweenBindingsStateBehaviour
+  pointAKey: PatrolPointA
+  pointBKey: PatrolPointB
+  speed: 2
+  reachDistance: 0.05
+--- !u!114 &-3791568146975113576
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 351040a6e20b4e27b1e51497dfc81f26, type: 3}
+  m_Name: BlackboardBoolTransitionBehaviour
+  m_EditorClassIdentifier: FSMExampleModule::FSMModule.Examples.BlackboardBoolTransitionBehaviour
+  key: ShouldAttack
+  expectedValue: 1
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e2b6ff0ecf54457b8e7e8a79e280d95, type: 3}
+  m_Name: FSMGraph
+  m_EditorClassIdentifier: FSMGraphModule::FSMModule.Graph.FsmGraphAsset
+  initialStateId: bd6cf36d541e4268a901354f9337bc89
+  blackboardParameters:
+  - key: Test
+    type: 0
+    boolValue: 0
+    intValue: 0
+    floatValue: 0
+  - key: Speed
+    type: 2
+    boolValue: 0
+    intValue: 0
+    floatValue: 0
+  bindingDefinitions:
+  - key: PatrolPointA
+    description: 
+  - key: PatrolPointB
+    description: 
+  states:
+  - id: bd6cf36d541e4268a901354f9337bc89
+    name: Patrol
+    position: {x: 154, y: 118}
+    state: {fileID: -4790437797965550498}
+  - id: 07176213d6d044388c830c7aed9e95bc
+    name: Attack
+    position: {x: 5, y: -76}
+    state: {fileID: -7162858787573771227}
+  transitions:
+  - id: eccddbf526dc41b99b237ecece73dd95
+    fromStateId: 07176213d6d044388c830c7aed9e95bc
+    toStateId: bd6cf36d541e4268a901354f9337bc89
+    transition: {fileID: -3791568146975113576}
+  - id: a4ba5e3c4ccb4e2dbdc3e396df4f4388
+    fromStateId: bd6cf36d541e4268a901354f9337bc89
+    toStateId: 07176213d6d044388c830c7aed9e95bc
+    transition: {fileID: 460588445498447718}
+--- !u!114 &460588445498447718
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 351040a6e20b4e27b1e51497dfc81f26, type: 3}
+  m_Name: BlackboardBoolTransitionBehaviour
+  m_EditorClassIdentifier: FSMExampleModule::FSMModule.Examples.BlackboardBoolTransitionBehaviour
+  key: ShouldAttack
+  expectedValue: 0
