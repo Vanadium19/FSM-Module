@@ -434,22 +434,44 @@ namespace FSMModule.Graph.Editor
 
         private void DrawRuntimeBlackboardParameterRow(FsmBlackboardParameterDefinition parameter)
         {
-            using (new EditorGUI.DisabledScope(true))
             using (new EditorGUILayout.HorizontalScope())
             {
                 EditorGUILayout.LabelField(parameter.Type.ToString(), EditorStyles.miniLabel, GUILayout.Width(34f));
-                EditorGUILayout.TextField(parameter.Key, GUILayout.ExpandWidth(true));
+
+                using (new EditorGUI.DisabledScope(true))
+                    EditorGUILayout.TextField(parameter.Key, GUILayout.ExpandWidth(true));
 
                 switch (parameter.Type)
                 {
                     case BlackboardParameterType.Bool:
-                        EditorGUILayout.Toggle(GetRuntimeBoolValue(parameter), GUILayout.Width(18f));
+                        EditorGUI.BeginChangeCheck();
+                        var updatedBoolValue = EditorGUILayout.Toggle(GetRuntimeBoolValue(parameter), GUILayout.Width(18f));
+                        if (EditorGUI.EndChangeCheck())
+                        {
+                            _runner.SetBool(parameter.Key, updatedBoolValue);
+                            GUI.changed = true;
+                        }
+
                         break;
                     case BlackboardParameterType.Int:
-                        EditorGUILayout.IntField(GetRuntimeIntValue(parameter), GUILayout.Width(64f));
+                        EditorGUI.BeginChangeCheck();
+                        var updatedIntValue = EditorGUILayout.IntField(GetRuntimeIntValue(parameter), GUILayout.Width(64f));
+                        if (EditorGUI.EndChangeCheck())
+                        {
+                            _runner.SetInt(parameter.Key, updatedIntValue);
+                            GUI.changed = true;
+                        }
+
                         break;
                     case BlackboardParameterType.Float:
-                        EditorGUILayout.FloatField(GetRuntimeFloatValue(parameter), GUILayout.Width(64f));
+                        EditorGUI.BeginChangeCheck();
+                        var updatedFloatValue = EditorGUILayout.FloatField(GetRuntimeFloatValue(parameter), GUILayout.Width(64f));
+                        if (EditorGUI.EndChangeCheck())
+                        {
+                            _runner.SetFloat(parameter.Key, updatedFloatValue);
+                            GUI.changed = true;
+                        }
+
                         break;
                 }
             }
