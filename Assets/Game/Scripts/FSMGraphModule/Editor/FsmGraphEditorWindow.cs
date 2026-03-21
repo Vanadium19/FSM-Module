@@ -720,10 +720,27 @@ namespace FSMModule.Graph.Editor
         {
             var menu = new GenericMenu();
             menu.AddItem(new GUIContent("Start Transition"), false, () => _pendingTransitionFromStateId = state.Id);
-            menu.AddItem(new GUIContent("Create State Behaviour"), false, () => ShowCreateStateMenu(state));
+
+            if (_graph.InitialStateId == state.Id)
+                menu.AddDisabledItem(new GUIContent("Set As Default"));
+            else
+                menu.AddItem(new GUIContent("Set As Default"), false, () => SetInitialState(state));
+
             menu.AddSeparator(string.Empty);
             menu.AddItem(new GUIContent("Delete State"), false, () => DeleteState(state));
             menu.ShowAsContext();
+        }
+
+        private void SetInitialState(FsmGraphStateNode state)
+        {
+            if (state == null || _graph == null || _graph.InitialStateId == state.Id)
+                return;
+
+            RecordGraph("Set Initial State");
+            _graph.InitialStateId = state.Id;
+            _selectedStateId = state.Id;
+            _selectedTransitionId = null;
+            MarkDirty();
         }
 
         private void ShowCreateStateMenu(FsmGraphStateNode state)
