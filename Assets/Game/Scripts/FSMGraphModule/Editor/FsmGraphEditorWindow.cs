@@ -29,6 +29,7 @@ namespace FSMModule.Graph.Editor
         private FsmGraphAsset _graph;
         private Vector2 _canvasPan = new(120f, 120f);
         private Vector2 _inspectorScroll;
+        private string _blackboardSearch = string.Empty;
 
         private string _selectedStateId;
         private string _selectedTransitionId;
@@ -128,9 +129,6 @@ namespace FSMModule.Graph.Editor
                 {
                     if (GUILayout.Button("New State", EditorStyles.toolbarButton, GUILayout.Width(80f)))
                         AddState(GetCanvasCenterPosition());
-
-                    if (GUILayout.Button("Add Parameter", EditorStyles.toolbarButton, GUILayout.Width(100f)))
-                        AddBlackboardParameter();
 
                     if (GUILayout.Button("Frame Graph", EditorStyles.toolbarButton, GUILayout.Width(90f)))
                         FrameGraph();
@@ -318,70 +316,151 @@ namespace FSMModule.Graph.Editor
         {
             EditorGUILayout.LabelField("Blackboard Parameters", EditorStyles.boldLabel);
 
-            if (_graph.BlackboardParameters.Count == 0)
-                EditorGUILayout.HelpBox("No blackboard parameters yet.", MessageType.None);
-
-            for (var i = 0; i < _graph.BlackboardParameters.Count; i++)
+            using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
             {
-                var parameter = _graph.BlackboardParameters[i];
-                if (parameter == null)
-                    continue;
+                DrawBlackboardToolbar();
 
-                using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+                var visibleParameterCount = 0;
+                for (var i = 0; i < _graph.BlackboardParameters.Count; i++)
                 {
-                    var updatedKey = parameter.Key;
-                    var updatedType = parameter.Type;
-                    var updatedBoolValue = parameter.BoolValue;
-                    var updatedIntValue = parameter.IntValue;
-                    var updatedFloatValue = parameter.FloatValue;
+                    var parameter = _graph.BlackboardParameters[i];
+                    if (parameter == null || !MatchesBlackboardSearch(parameter))
+                        continue;
 
-                    using (new EditorGUILayout.HorizontalScope())
-                    {
-                        updatedKey = EditorGUILayout.TextField("Key", parameter.Key);
-                        if (GUILayout.Button("X", GUILayout.Width(24f)))
-                        {
-                            RecordGraph("Remove Blackboard Parameter");
-                            _graph.BlackboardParameters.RemoveAt(i);
-                            MarkDirty();
-                            return;
-                        }
-                    }
+                    visibleParameterCount++;
 
-                    updatedType = (BlackboardParameterType)EditorGUILayout.EnumPopup("Type", parameter.Type);
+                    if (DrawBlackboardParameterRow(parameter, i))
+                        return;
+                }
 
-                    switch (updatedType)
-                    {
-                        case BlackboardParameterType.Bool:
-                            updatedBoolValue = EditorGUILayout.Toggle("Default", parameter.BoolValue);
-                            break;
-                        case BlackboardParameterType.Int:
-                            updatedIntValue = EditorGUILayout.IntField("Default", parameter.IntValue);
-                            break;
-                        case BlackboardParameterType.Float:
-                            updatedFloatValue = EditorGUILayout.FloatField("Default", parameter.FloatValue);
-                            break;
-                    }
+                if (_graph.BlackboardParameters.Count == 0)
+                    EditorGUILayout.HelpBox("No blackboard parameters yet. Use + to add Float, Int or Bool.", MessageType.None);
+                else if (visibleParameterCount == 0)
+                    EditorGUILayout.HelpBox("No blackboard parameters match the current search.", MessageType.None);
+            }
+        }
 
-                    if (updatedKey != parameter.Key ||
-                        updatedType != parameter.Type ||
-                        updatedBoolValue != parameter.BoolValue ||
-                        updatedIntValue != parameter.IntValue ||
-                        !Mathf.Approximately(updatedFloatValue, parameter.FloatValue))
-                    {
-                        RecordGraph("Edit Blackboard Parameter");
-                        parameter.Key = updatedKey;
-                        parameter.Type = updatedType;
-                        parameter.BoolValue = updatedBoolValue;
-                        parameter.IntValue = updatedIntValue;
-                        parameter.FloatValue = updatedFloatValue;
-                        MarkDirty();
-                    }
+        private void DrawBlackboardToolbar()
+        {
+            using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
+            {
+                _blackboardSearch = EditorGUILayout.TextField(
+                    _blackboardSearch,
+                    GetToolbarSearchFieldStyle(),
+                    GUILayout.ExpandWidth(true));
+
+                if (GUILayout.Button("+", EditorStyles.toolbarButton, GUILayout.Width(26f)))
+                    ShowAddBlackboardParameterMenu();
+            }
+        }
+
+        private bool DrawBlackboardParameterRow(FsmBlackboardParameterDefinition parameter, int index)
+        {
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUILayout.LabelField(parameter.Type.ToString(), EditorStyles.miniLabel, GUILayout.Width(34f));
+
+                var updatedKey = EditorGUILayout.TextField(parameter.Key, GUILayout.ExpandWidth(true));
+                var updatedBoolValue = parameter.BoolValue;
+                var updatedIntValue = parameter.IntValue;
+                var updatedFloatValue = parameter.FloatValue;
+
+                switch (parameter.Type)
+                {
+                    case BlackboardParameterType.Bool:
+                        updatedBoolValue = EditorGUILayout.Toggle(parameter.BoolValue, GUILayout.Width(18f));
+                        break;
+                    case BlackboardParameterType.Int:
+                        updatedIntValue = EditorGUILayout.IntField(parameter.IntValue, GUILayout.Width(64f));
+                        break;
+                    case BlackboardParameterType.Float:
+                        updatedFloatValue = EditorGUILayout.FloatField(parameter.FloatValue, GUILayout.Width(64f));
+                        break;
+                }
+
+                if (GUILayout.Button("X", EditorStyles.miniButton, GUILayout.Width(22f)))
+                {
+                    RecordGraph("Remove Blackboard Parameter");
+                    _graph.BlackboardParameters.RemoveAt(index);
+                    MarkDirty();
+                    return true;
+                }
+
+                if (updatedKey != parameter.Key ||
+                    updatedBoolValue != parameter.BoolValue ||
+                    updatedIntValue != parameter.IntValue ||
+                    !Mathf.Approximately(updatedFloatValue, parameter.FloatValue))
+                {
+                    RecordGraph("Edit Blackboard Parameter");
+                    parameter.Key = updatedKey;
+                    parameter.BoolValue = updatedBoolValue;
+                    parameter.IntValue = updatedIntValue;
+                    parameter.FloatValue = updatedFloatValue;
+                    MarkDirty();
                 }
             }
 
-            if (GUILayout.Button("Add Blackboard Parameter"))
-                AddBlackboardParameter();
+            return false;
         }
+
+        private void ShowAddBlackboardParameterMenu()
+        {
+            var menu = new GenericMenu();
+            menu.AddItem(new GUIContent("Float"), false, () => AddBlackboardParameter(BlackboardParameterType.Float));
+            menu.AddItem(new GUIContent("Int"), false, () => AddBlackboardParameter(BlackboardParameterType.Int));
+            menu.AddItem(new GUIContent("Bool"), false, () => AddBlackboardParameter(BlackboardParameterType.Bool));
+            menu.ShowAsContext();
+        }
+
+        private void AddBlackboardParameter(BlackboardParameterType type)
+        {
+            RecordGraph("Add Blackboard Parameter");
+
+            var parameter = new FsmBlackboardParameterDefinition
+            {
+                Type = type,
+                Key = GetUniqueBlackboardParameterName(type),
+            };
+
+            _graph.BlackboardParameters.Add(parameter);
+            _blackboardSearch = string.Empty;
+            MarkDirty();
+        }
+
+        private string GetUniqueBlackboardParameterName(BlackboardParameterType type)
+        {
+            var baseName = $"New {type}";
+            var candidate = baseName;
+            var suffix = 1;
+
+            while (_graph.BlackboardParameters.Any(parameter =>
+                       parameter != null &&
+                       string.Equals(parameter.Key, candidate, StringComparison.OrdinalIgnoreCase)))
+            {
+                suffix++;
+                candidate = $"{baseName} {suffix}";
+            }
+
+            return candidate;
+        }
+
+        private bool MatchesBlackboardSearch(FsmBlackboardParameterDefinition parameter)
+        {
+            if (parameter == null)
+                return false;
+
+            if (string.IsNullOrWhiteSpace(_blackboardSearch))
+                return true;
+
+            return (!string.IsNullOrWhiteSpace(parameter.Key) &&
+                    parameter.Key.IndexOf(_blackboardSearch, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                   parameter.Type.ToString().IndexOf(_blackboardSearch, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static GUIStyle GetToolbarSearchFieldStyle() =>
+            GUI.skin.FindStyle("ToolbarSearchTextField") ??
+            GUI.skin.FindStyle("ToolbarSeachTextField") ??
+            EditorStyles.textField;
 
         private void DrawSelectionSection()
         {
@@ -737,13 +816,6 @@ namespace FSMModule.Graph.Editor
             _graph.Transitions.Add(transition);
             _selectedTransitionId = transition.Id;
             _selectedStateId = null;
-            MarkDirty();
-        }
-
-        private void AddBlackboardParameter()
-        {
-            RecordGraph("Add Blackboard Parameter");
-            _graph.BlackboardParameters.Add(new FsmBlackboardParameterDefinition());
             MarkDirty();
         }
 
