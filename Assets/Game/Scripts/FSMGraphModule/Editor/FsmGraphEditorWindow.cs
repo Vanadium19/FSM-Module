@@ -22,6 +22,9 @@ namespace FSMModule.Graph.Editor
         private static readonly Color TransitionColor = new(0.73f, 0.73f, 0.73f);
         private static readonly Color SelectedTransitionColor = new(0.95f, 0.72f, 0.18f);
         private static readonly Color PendingTransitionColor = new(0.44f, 0.80f, 0.46f);
+        private const float TransitionTangentLength = 60f;
+        private const float TransitionLaneSpacing = 28f;
+        private const float TransitionSelectionDistance = 12f;
 
         private FsmGraphAsset _graph;
         private Vector2 _canvasPan = new(120f, 120f);
@@ -239,23 +242,19 @@ namespace FSMModule.Graph.Editor
             if (fromState == null || toState == null)
                 return;
 
-            var start = GetNodeRect(canvasRect, fromState).center + new Vector2(NodeWidth * 0.5f, 0f);
-            var end = GetNodeRect(canvasRect, toState).center - new Vector2(NodeWidth * 0.5f, 0f);
-            var startTangent = start + Vector2.right * 60f;
-            var endTangent = end + Vector2.left * 60f;
+            var visual = GetTransitionVisualData(canvasRect, transition, fromState, toState);
             var color = transition.Id == _selectedTransitionId ? SelectedTransitionColor : TransitionColor;
 
             Handles.BeginGUI();
-            Handles.DrawBezier(start, end, startTangent, endTangent, color, null, 3f);
+            Handles.DrawBezier(visual.Start, visual.End, visual.StartTangent, visual.EndTangent, color, null, 3f);
             Handles.color = color;
-            Handles.ArrowHandleCap(0, end, Quaternion.LookRotation(Vector3.forward, end - start), 10f, EventType.Repaint);
+            Handles.ArrowHandleCap(0, visual.End, Quaternion.LookRotation(Vector3.forward, visual.End - visual.EndTangent), 10f, EventType.Repaint);
             Handles.color = Color.white;
             Handles.EndGUI();
 
-            var labelRect = new Rect((start.x + end.x) * 0.5f - 60f, (start.y + end.y) * 0.5f - 12f, 120f, 24f);
             var label = transition.Transition != null ? transition.Transition.GetType().Name : "Transition";
 
-            if (GUI.Button(labelRect, label, EditorStyles.miniButton))
+            if (GUI.Button(visual.LabelRect, label, EditorStyles.miniButton))
             {
                 _selectedTransitionId = transition.Id;
                 _selectedStateId = null;
@@ -608,6 +607,7 @@ namespace FSMModule.Graph.Editor
             }
 
             var hoveredState = FindStateAt(canvasRect, currentEvent.mousePosition);
+            var hoveredTransition = hoveredState == null ? FindTransitionAt(canvasRect, currentEvent.mousePosition) : null;
 
             if (currentEvent.type == EventType.MouseDown && currentEvent.button == 1)
             {
@@ -616,6 +616,12 @@ namespace FSMModule.Graph.Editor
                     _selectedStateId = hoveredState.Id;
                     _selectedTransitionId = null;
                     ShowStateContextMenu(hoveredState);
+                }
+                else if (hoveredTransition != null)
+                {
+                    _selectedTransitionId = hoveredTransition.Id;
+                    _selectedStateId = null;
+                    GUI.changed = true;
                 }
                 else
                 {
@@ -645,6 +651,15 @@ namespace FSMModule.Graph.Editor
                     _draggedStateId = hoveredState.Id;
                     _dragOffset = currentEvent.mousePosition - GetNodeRect(canvasRect, hoveredState).position;
                     RecordGraph("Move FSM State");
+                    currentEvent.Use();
+                    return;
+                }
+
+                if (hoveredTransition != null)
+                {
+                    _selectedTransitionId = hoveredTransition.Id;
+                    _selectedStateId = null;
+                    GUI.changed = true;
                     currentEvent.Use();
                     return;
                 }
@@ -873,8 +888,162 @@ namespace FSMModule.Graph.Editor
             return null;
         }
 
+        private FsmGraphTransition FindTransitionAt(Rect canvasRect, Vector2 mousePosition)
+        {
+            FsmGraphTransition closestTransition = null;
+            var closestDistance = TransitionSelectionDistance;
+
+            for (var i = _graph.Transitions.Count - 1; i >= 0; i--)
+            {
+                var transition = _graph.Transitions[i];
+                if (transition == null)
+                    continue;
+
+                var fromState = _graph.FindState(transition.FromStateId);
+                var toState = _graph.FindState(transition.ToStateId);
+                if (fromState == null || toState == null)
+                    continue;
+
+                var visual = GetTransitionVisualData(canvasRect, transition, fromState, toState);
+                if (visual.LabelRect.Contains(mousePosition))
+                    return transition;
+
+                var distance = HandleUtility.DistancePointBezier(
+                    mousePosition,
+                    visual.Start,
+                    visual.End,
+                    visual.StartTangent,
+                    visual.EndTangent);
+
+                if (distance > closestDistance)
+                    continue;
+
+                closestDistance = distance;
+                closestTransition = transition;
+            }
+
+            return closestTransition;
+        }
+
         private Rect GetNodeRect(Rect canvasRect, FsmGraphStateNode state) =>
             new(canvasRect.x + _canvasPan.x + state.Position.x, canvasRect.y + _canvasPan.y + state.Position.y, NodeWidth, NodeHeight);
+
+        private TransitionVisualData GetTransitionVisualData(
+            Rect canvasRect,
+            FsmGraphTransition transition,
+            FsmGraphStateNode fromState,
+            FsmGraphStateNode toState)
+        {
+            var fromRect = GetNodeRect(canvasRect, fromState);
+            var toRect = GetNodeRect(canvasRect, toState);
+
+            if (transition.FromStateId == transition.ToStateId)
+            {
+                var start = new Vector2(fromRect.xMax - 26f, fromRect.center.y - 12f);
+                var end = new Vector2(fromRect.xMax - 26f, fromRect.center.y + 12f);
+                var startTangent = start + new Vector2(80f, -60f);
+                var endTangent = end + new Vector2(80f, 60f);
+                var labelCenter = EvaluateBezier(start, end, startTangent, endTangent, 0.5f);
+
+                return new TransitionVisualData(
+                    start,
+                    end,
+                    startTangent,
+                    endTangent,
+                    new Rect(labelCenter.x - 60f, labelCenter.y - 12f, 120f, 24f));
+            }
+
+            var startPoint = fromRect.center + new Vector2(NodeWidth * 0.5f, 0f);
+            var endPoint = toRect.center - new Vector2(NodeWidth * 0.5f, 0f);
+            var offset = GetTransitionCurveOffset(transition);
+
+            var startTangentPoint = startPoint + Vector2.right * TransitionTangentLength + offset;
+            var endTangentPoint = endPoint + Vector2.left * TransitionTangentLength + offset;
+            var labelCenterPoint = EvaluateBezier(startPoint, endPoint, startTangentPoint, endTangentPoint, 0.5f);
+
+            return new TransitionVisualData(
+                startPoint,
+                endPoint,
+                startTangentPoint,
+                endTangentPoint,
+                new Rect(labelCenterPoint.x - 60f, labelCenterPoint.y - 12f, 120f, 24f));
+        }
+
+        private Vector2 GetTransitionCurveOffset(FsmGraphTransition transition)
+        {
+            var pairTransitions = _graph.Transitions
+                .Where(candidate =>
+                    candidate != null &&
+                    ((candidate.FromStateId == transition.FromStateId && candidate.ToStateId == transition.ToStateId) ||
+                     (candidate.FromStateId == transition.ToStateId && candidate.ToStateId == transition.FromStateId)))
+                .ToArray();
+
+            if (pairTransitions.Length <= 1)
+                return Vector2.zero;
+
+            var pairStartId = string.CompareOrdinal(transition.FromStateId, transition.ToStateId) <= 0
+                ? transition.FromStateId
+                : transition.ToStateId;
+            var pairEndId = pairStartId == transition.FromStateId ? transition.ToStateId : transition.FromStateId;
+
+            var pairStartState = _graph.FindState(pairStartId);
+            var pairEndState = _graph.FindState(pairEndId);
+            if (pairStartState == null || pairEndState == null)
+                return Vector2.zero;
+
+            var pairDirectionTransitions = pairTransitions
+                .Where(candidate => candidate.FromStateId == transition.FromStateId && candidate.ToStateId == transition.ToStateId)
+                .OrderBy(candidate => candidate.Id)
+                .ToArray();
+
+            var reverseDirectionCount = pairTransitions.Length - pairDirectionTransitions.Length;
+            var directionIndex = Array.FindIndex(pairDirectionTransitions, candidate => candidate.Id == transition.Id);
+            if (directionIndex < 0)
+                directionIndex = 0;
+
+            var canonicalDirection = (pairEndState.Position - pairStartState.Position).normalized;
+            if (canonicalDirection.sqrMagnitude <= Mathf.Epsilon)
+                canonicalDirection = Vector2.right;
+
+            var perpendicular = new Vector2(-canonicalDirection.y, canonicalDirection.x);
+
+            if (reverseDirectionCount > 0)
+            {
+                var side = transition.FromStateId == pairStartId ? 1f : -1f;
+                return perpendicular * side * ((directionIndex + 1) * TransitionLaneSpacing);
+            }
+
+            var centeredLane = directionIndex - ((pairDirectionTransitions.Length - 1) * 0.5f);
+            return perpendicular * (centeredLane * TransitionLaneSpacing);
+        }
+
+        private static Vector2 EvaluateBezier(Vector2 start, Vector2 end, Vector2 startTangent, Vector2 endTangent, float t)
+        {
+            var oneMinusT = 1f - t;
+            return
+                oneMinusT * oneMinusT * oneMinusT * start +
+                3f * oneMinusT * oneMinusT * t * startTangent +
+                3f * oneMinusT * t * t * endTangent +
+                t * t * t * end;
+        }
+
+        private readonly struct TransitionVisualData
+        {
+            public TransitionVisualData(Vector2 start, Vector2 end, Vector2 startTangent, Vector2 endTangent, Rect labelRect)
+            {
+                Start = start;
+                End = end;
+                StartTangent = startTangent;
+                EndTangent = endTangent;
+                LabelRect = labelRect;
+            }
+
+            public Vector2 Start { get; }
+            public Vector2 End { get; }
+            public Vector2 StartTangent { get; }
+            public Vector2 EndTangent { get; }
+            public Rect LabelRect { get; }
+        }
 
         private Vector2 ScreenToCanvasPosition(Vector2 mousePosition)
         {
