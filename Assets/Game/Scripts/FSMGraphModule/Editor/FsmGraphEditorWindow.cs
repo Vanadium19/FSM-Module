@@ -247,7 +247,11 @@ namespace FSMModule.Graph.Editor
             Handles.color = Color.white;
             Handles.EndGUI();
 
-            var label = transition.Transition != null ? transition.Transition.GetType().Name : "Transition";
+            var label = transition.Transition is FsmBlackboardTransitionBehaviour standardTransition
+                ? standardTransition.DisplayName
+                : transition.Transition != null
+                    ? transition.Transition.GetType().Name
+                    : "Transition";
 
             if (GUI.Button(visual.LabelRect, label, EditorStyles.miniButton))
             {
@@ -560,27 +564,28 @@ namespace FSMModule.Graph.Editor
 
             EditorGUILayout.SelectableLabel(transition.Id, EditorStyles.textField, GUILayout.Height(EditorGUIUtility.singleLineHeight));
 
-            EditorGUI.BeginChangeCheck();
-            var updatedTransition = (FsmTransitionBehaviour)EditorGUILayout.ObjectField(
-                "Behaviour",
-                transition.Transition,
-                typeof(FsmTransitionBehaviour),
-                false);
-            if (EditorGUI.EndChangeCheck())
+            if (transition.Transition == null)
             {
-                RecordGraph("Assign Transition Behaviour");
-                transition.Transition = updatedTransition;
-                ClearEmbeddedEditor();
-                MarkDirty();
+                EditorGUILayout.HelpBox("This transition has no settings asset yet.", MessageType.Warning);
+
+                if (GUILayout.Button("Create Standard Transition"))
+                    ReplaceWithStandardTransition(transition);
             }
+            else if (transition.Transition is not FsmBlackboardTransitionBehaviour)
+            {
+                EditorGUILayout.HelpBox(
+                    "Legacy custom transition detected. New transitions use the built-in blackboard condition workflow.",
+                    MessageType.Warning);
 
-            if (GUILayout.Button("Create Behaviour"))
-                ShowCreateTransitionMenu(transition);
+                if (GUILayout.Button("Replace With Standard Transition"))
+                    ReplaceWithStandardTransition(transition);
 
-            if (transition.Transition != null)
                 DrawEmbeddedEditor(transition.Transition);
+            }
             else
-                EditorGUILayout.HelpBox("Choose or create a transition behaviour. Users only need to inherit from FsmTransitionBehaviour.", MessageType.Info);
+            {
+                DrawEmbeddedEditor(transition.Transition);
+            }
 
             EditorGUILayout.Space();
 
@@ -750,24 +755,6 @@ namespace FSMModule.Graph.Editor
             menu.ShowAsContext();
         }
 
-        private void ShowCreateTransitionMenu(FsmGraphTransition transition)
-        {
-            var menu = new GenericMenu();
-            var types = GetCreatableTypes<FsmTransitionBehaviour>().ToArray();
-
-            if (types.Length == 0)
-            {
-                menu.AddDisabledItem(new GUIContent("No FsmTransitionBehaviour types found"));
-                menu.ShowAsContext();
-                return;
-            }
-
-            foreach (var type in types)
-                menu.AddItem(new GUIContent(type.Name), false, () => AssignNewTransitionBehaviour(transition, type));
-
-            menu.ShowAsContext();
-        }
-
         private void AssignNewStateBehaviour(FsmGraphStateNode state, Type type)
         {
             RecordGraph("Create State Behaviour");
@@ -780,12 +767,14 @@ namespace FSMModule.Graph.Editor
             MarkDirty();
         }
 
-        private void AssignNewTransitionBehaviour(FsmGraphTransition transition, Type type)
+        private void ReplaceWithStandardTransition(FsmGraphTransition transition)
         {
-            RecordGraph("Create Transition Behaviour");
+            RecordGraph("Replace Transition Behaviour");
             RemoveOwnedSubAsset(transition.Transition);
 
-            var behaviour = CreateSubAsset<FsmTransitionBehaviour>(type, type.Name);
+            var behaviour = CreateSubAsset<FsmBlackboardTransitionBehaviour>(
+                typeof(FsmBlackboardTransitionBehaviour),
+                "Transition");
             transition.Transition = behaviour;
             _selectedTransitionId = transition.Id;
             ClearEmbeddedEditor();
@@ -813,6 +802,9 @@ namespace FSMModule.Graph.Editor
         {
             RecordGraph("Add FSM Transition");
             var transition = new FsmGraphTransition(Guid.NewGuid().ToString("N"), fromStateId, toStateId);
+            transition.Transition = CreateSubAsset<FsmBlackboardTransitionBehaviour>(
+                typeof(FsmBlackboardTransitionBehaviour),
+                "Transition");
             _graph.Transitions.Add(transition);
             _selectedTransitionId = transition.Id;
             _selectedStateId = null;
