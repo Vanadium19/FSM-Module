@@ -80,12 +80,16 @@ namespace FSMModule.Graph.Editor
 
         private void OnEnable()
         {
+            Undo.undoRedoPerformed += HandleUndoRedoPerformed;
+
             if (_graph == null && TryGetSelectionContext(out var graph, out var runner))
                 SetSelectionContext(graph, runner);
         }
 
         private void OnDisable()
         {
+            Undo.undoRedoPerformed -= HandleUndoRedoPerformed;
+
             if (_embeddedEditor != null)
                 DestroyImmediate(_embeddedEditor);
         }
@@ -107,6 +111,7 @@ namespace FSMModule.Graph.Editor
 
         private void OnGUI()
         {
+            HandleKeyboardShortcuts(Event.current);
             DrawToolbar();
 
             if (_graph == null)
@@ -123,6 +128,39 @@ namespace FSMModule.Graph.Editor
 
             if (GUI.changed)
                 Repaint();
+        }
+
+        private void HandleKeyboardShortcuts(Event currentEvent)
+        {
+            if (currentEvent == null || currentEvent.type != EventType.KeyDown)
+                return;
+
+            if (EditorGUIUtility.editingTextField)
+                return;
+
+            if (currentEvent.keyCode == KeyCode.Escape)
+            {
+                if (CancelCurrentAction())
+                    currentEvent.Use();
+
+                return;
+            }
+
+            if (!HasActionModifier(currentEvent))
+                return;
+
+            if (currentEvent.keyCode == KeyCode.Z && !currentEvent.shift)
+            {
+                Undo.PerformUndo();
+                currentEvent.Use();
+                return;
+            }
+
+            if ((currentEvent.keyCode == KeyCode.Z && currentEvent.shift) || currentEvent.keyCode == KeyCode.Y)
+            {
+                Undo.PerformRedo();
+                currentEvent.Use();
+            }
         }
 
         private void DrawToolbar()
@@ -226,15 +264,13 @@ namespace FSMModule.Graph.Editor
                 DrawStateSelectionOutline(nodeRect);
 
             var nameRect = new Rect(nodeRect.x + 10f, nodeRect.y + 8f, nodeRect.width - 20f, 20f);
-            var typeRect = new Rect(nodeRect.x + 10f, nodeRect.y + 34f, nodeRect.width - 20f, 18f);
-            var idRect = new Rect(nodeRect.x + 10f, nodeRect.y + 56f, nodeRect.width - 20f, 16f);
+            var typeRect = new Rect(nodeRect.x + 10f, nodeRect.y + 38f, nodeRect.width - 20f, 18f);
 
             EditorGUI.LabelField(nameRect, state.Name, EditorStyles.boldLabel);
             EditorGUI.LabelField(
                 typeRect,
                 state.State != null ? state.State.GetType().Name : "No State Behaviour",
                 EditorStyles.miniLabel);
-            EditorGUI.LabelField(idRect, state.Id, EditorStyles.centeredGreyMiniLabel);
         }
 
         private static void DrawStateSelectionOutline(Rect nodeRect)
@@ -567,8 +603,6 @@ namespace FSMModule.Graph.Editor
                 MarkDirty();
             }
 
-            EditorGUILayout.SelectableLabel(state.Id, EditorStyles.textField, GUILayout.Height(EditorGUIUtility.singleLineHeight));
-
             EditorGUI.BeginChangeCheck();
             var updatedState = (FsmStateBehaviour)EditorGUILayout.ObjectField("Behaviour", state.State, typeof(FsmStateBehaviour), false);
             if (EditorGUI.EndChangeCheck())
@@ -632,8 +666,6 @@ namespace FSMModule.Graph.Editor
                 }
             }
 
-            EditorGUILayout.SelectableLabel(transition.Id, EditorStyles.textField, GUILayout.Height(EditorGUIUtility.singleLineHeight));
-
             if (transition.Transition == null)
             {
                 EditorGUILayout.HelpBox("This transition has no settings asset yet.", MessageType.Warning);
@@ -678,6 +710,24 @@ namespace FSMModule.Graph.Editor
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Behaviour Settings", EditorStyles.miniBoldLabel);
             _embeddedEditor.OnInspectorGUI();
+        }
+
+        private bool CancelCurrentAction()
+        {
+            var hadAction =
+                !string.IsNullOrWhiteSpace(_pendingTransitionFromStateId) ||
+                !string.IsNullOrWhiteSpace(_draggedStateId) ||
+                _isPanning;
+
+            if (!hadAction)
+                return false;
+
+            _pendingTransitionFromStateId = null;
+            _draggedStateId = null;
+            _isPanning = false;
+            GUI.changed = true;
+            Repaint();
+            return true;
         }
 
         private void HandleCanvasEvents(Rect canvasRect, Event currentEvent)
@@ -1344,6 +1394,29 @@ namespace FSMModule.Graph.Editor
             _runner.Graph == _graph &&
             _runner.IsInitialized &&
             _runner.RuntimeContext != null;
+
+        private void HandleUndoRedoPerformed()
+        {
+            if (_graph != null && _graph.EnsureBlackboardParameterMetadata())
+                EditorUtility.SetDirty(_graph);
+
+            if (_graph == null || _graph.FindState(_selectedStateId) == null)
+                _selectedStateId = null;
+
+            if (_graph == null || _graph.FindTransition(_selectedTransitionId) == null)
+                _selectedTransitionId = null;
+
+            if (_graph == null || _graph.FindState(_pendingTransitionFromStateId) == null)
+                _pendingTransitionFromStateId = null;
+
+            _draggedStateId = null;
+            _isPanning = false;
+            ClearEmbeddedEditor();
+            Repaint();
+        }
+
+        private static bool HasActionModifier(Event currentEvent) =>
+            currentEvent != null && (currentEvent.control || currentEvent.command);
 
         private string GetToolbarTitle()
         {
