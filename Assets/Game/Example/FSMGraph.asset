@@ -30,7 +30,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: FSMExampleModule::FSMModule.Examples.PatrolBetweenBindingsStateBehaviour
   speed: 2
   reachDistance: 0.05
---- !u!114 &-3791568146975113576
+--- !u!114 &-2636525522790420052
 MonoBehaviour:
   m_ObjectHideFlags: 1
   m_CorrespondingSourceObject: {fileID: 0}
@@ -39,11 +39,18 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 351040a6e20b4e27b1e51497dfc81f26, type: 3}
-  m_Name: BlackboardBoolTransitionBehaviour
-  m_EditorClassIdentifier: FSMExampleModule::FSMModule.Examples.BlackboardBoolTransitionBehaviour
-  key: ShouldAttack
-  expectedValue: 1
+  m_Script: {fileID: 11500000, guid: 361ae9970725468ca1e41a2cca21c035, type: 3}
+  m_Name: Transition
+  m_EditorClassIdentifier: FSMGraphModule::FSMModule.Graph.FsmBlackboardTransitionBehaviour
+  conditionMode: 0
+  conditions:
+  - parameterId: 339e680c24cc48b587cf061f985938ee
+    parameterKey: ShouldAttack
+    parameterType: 0
+    comparisonOperator: 0
+    boolValue: 0
+    intValue: 0
+    floatValue: 0
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -58,7 +65,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: FSMGraphModule::FSMModule.Graph.FsmGraphAsset
   initialStateId: bd6cf36d541e4268a901354f9337bc89
   blackboardParameters:
-  - key: Parameter
+  - id: 339e680c24cc48b587cf061f985938ee
+    key: ShouldAttack
     type: 0
     boolValue: 0
     intValue: 0
@@ -71,22 +79,22 @@ MonoBehaviour:
   states:
   - id: bd6cf36d541e4268a901354f9337bc89
     name: Patrol
-    position: {x: 153, y: 118}
+    position: {x: 354, y: 265}
     state: {fileID: -4790437797965550498}
   - id: 07176213d6d044388c830c7aed9e95bc
     name: Attack
-    position: {x: 5, y: -76}
+    position: {x: 513, y: 41}
     state: {fileID: -7162858787573771227}
   transitions:
-  - id: eccddbf526dc41b99b237ecece73dd95
-    fromStateId: 07176213d6d044388c830c7aed9e95bc
-    toStateId: bd6cf36d541e4268a901354f9337bc89
-    transition: {fileID: -3791568146975113576}
-  - id: a4ba5e3c4ccb4e2dbdc3e396df4f4388
+  - id: e771bbf1c5c44fa6978e2136ef03e6e9
     fromStateId: bd6cf36d541e4268a901354f9337bc89
     toStateId: 07176213d6d044388c830c7aed9e95bc
-    transition: {fileID: 460588445498447718}
---- !u!114 &460588445498447718
+    transition: {fileID: 572609550601945941}
+  - id: c9dc9c1b8eee4e5fa88ab0ac5aa7fabe
+    fromStateId: 07176213d6d044388c830c7aed9e95bc
+    toStateId: bd6cf36d541e4268a901354f9337bc89
+    transition: {fileID: -2636525522790420052}
+--- !u!114 &572609550601945941
 MonoBehaviour:
   m_ObjectHideFlags: 1
   m_CorrespondingSourceObject: {fileID: 0}
@@ -95,8 +103,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 351040a6e20b4e27b1e51497dfc81f26, type: 3}
-  m_Name: BlackboardBoolTransitionBehaviour
-  m_EditorClassIdentifier: FSMExampleModule::FSMModule.Examples.BlackboardBoolTransitionBehaviour
-  key: ShouldAttack
-  expectedValue: 0
+  m_Script: {fileID: 11500000, guid: 361ae9970725468ca1e41a2cca21c035, type: 3}
+  m_Name: Transition
+  m_EditorClassIdentifier: FSMGraphModule::FSMModule.Graph.FsmBlackboardTransitionBehaviour
+  conditionMode: 0
+  conditions:
+  - parameterId: 339e680c24cc48b587cf061f985938ee
+    parameterKey: ShouldAttack
+    parameterType: 0
+    comparisonOperator: 0
+    boolValue: 1
+    intValue: 0
+    floatValue: 0

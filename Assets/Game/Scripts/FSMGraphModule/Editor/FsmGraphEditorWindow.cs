@@ -22,9 +22,12 @@ namespace FSMModule.Graph.Editor
         private static readonly Color TransitionColor = new(0.73f, 0.73f, 0.73f);
         private static readonly Color SelectedTransitionColor = new(0.95f, 0.72f, 0.18f);
         private static readonly Color PendingTransitionColor = new(0.44f, 0.80f, 0.46f);
-        private const float TransitionTangentLength = 60f;
         private const float TransitionLaneSpacing = 28f;
         private const float TransitionSelectionDistance = 12f;
+        private const float TransitionArrowLength = 14f;
+        private const float TransitionArrowWidth = 10f;
+        private const float SelfTransitionLoopWidth = 44f;
+        private const float SelfTransitionLoopHeight = 18f;
 
         private FsmGraphAsset _graph;
         private Vector2 _canvasPan = new(120f, 120f);
@@ -241,24 +244,11 @@ namespace FSMModule.Graph.Editor
             var color = transition.Id == _selectedTransitionId ? SelectedTransitionColor : TransitionColor;
 
             Handles.BeginGUI();
-            Handles.DrawBezier(visual.Start, visual.End, visual.StartTangent, visual.EndTangent, color, null, 3f);
             Handles.color = color;
-            Handles.ArrowHandleCap(0, visual.End, Quaternion.LookRotation(Vector3.forward, visual.End - visual.EndTangent), 10f, EventType.Repaint);
+            DrawTransitionPolyline(visual.Points);
+            DrawTransitionArrow(visual.ArrowTip, visual.ArrowDirection);
             Handles.color = Color.white;
             Handles.EndGUI();
-
-            var label = transition.Transition is FsmBlackboardTransitionBehaviour standardTransition
-                ? standardTransition.DisplayName
-                : transition.Transition != null
-                    ? transition.Transition.GetType().Name
-                    : "Transition";
-
-            if (GUI.Button(visual.LabelRect, label, EditorStyles.miniButton))
-            {
-                _selectedTransitionId = transition.Id;
-                _selectedStateId = null;
-                GUI.changed = true;
-            }
         }
 
         private void DrawPendingTransition(Rect canvasRect, string fromStateId, Vector2 mousePosition)
@@ -268,13 +258,12 @@ namespace FSMModule.Graph.Editor
                 return;
 
             var startRect = GetNodeRect(canvasRect, fromState);
-            var start = startRect.center + new Vector2(NodeWidth * 0.5f, 0f);
-            var end = mousePosition;
-            var startTangent = start + Vector2.right * 60f;
-            var endTangent = end + Vector2.left * 60f;
+            var start = GetRectEdgePoint(startRect, mousePosition - startRect.center);
 
             Handles.BeginGUI();
-            Handles.DrawBezier(start, end, startTangent, endTangent, PendingTransitionColor, null, 3f);
+            Handles.color = PendingTransitionColor;
+            Handles.DrawAAPolyLine(3f, start, mousePosition);
+            Handles.color = Color.white;
             Handles.EndGUI();
         }
 
@@ -911,15 +900,7 @@ namespace FSMModule.Graph.Editor
                     continue;
 
                 var visual = GetTransitionVisualData(canvasRect, transition, fromState, toState);
-                if (visual.LabelRect.Contains(mousePosition))
-                    return transition;
-
-                var distance = HandleUtility.DistancePointBezier(
-                    mousePosition,
-                    visual.Start,
-                    visual.End,
-                    visual.StartTangent,
-                    visual.EndTangent);
+                var distance = GetDistanceToPolyline(mousePosition, visual.Points);
 
                 if (distance > closestDistance)
                     continue;
@@ -945,37 +926,39 @@ namespace FSMModule.Graph.Editor
 
             if (transition.FromStateId == transition.ToStateId)
             {
-                var start = new Vector2(fromRect.xMax - 26f, fromRect.center.y - 12f);
-                var end = new Vector2(fromRect.xMax - 26f, fromRect.center.y + 12f);
-                var startTangent = start + new Vector2(80f, -60f);
-                var endTangent = end + new Vector2(80f, 60f);
-                var labelCenter = EvaluateBezier(start, end, startTangent, endTangent, 0.5f);
+                var loopOffset = GetSelfTransitionLoopOffset(transition);
+                var start = new Vector2(fromRect.xMax, fromRect.center.y - SelfTransitionLoopHeight);
+                var cornerTop = new Vector2(fromRect.xMax + SelfTransitionLoopWidth + loopOffset, fromRect.center.y - SelfTransitionLoopHeight);
+                var cornerBottom = new Vector2(fromRect.xMax + SelfTransitionLoopWidth + loopOffset, fromRect.center.y + SelfTransitionLoopHeight);
+                var end = new Vector2(fromRect.xMax, fromRect.center.y + SelfTransitionLoopHeight);
+                var arrowTip = Vector2.Lerp(cornerTop, cornerBottom, 0.5f);
 
                 return new TransitionVisualData(
-                    start,
-                    end,
-                    startTangent,
-                    endTangent,
-                    new Rect(labelCenter.x - 60f, labelCenter.y - 12f, 120f, 24f));
+                    new[] { start, cornerTop, cornerBottom, end },
+                    arrowTip,
+                    (cornerBottom - cornerTop).normalized);
             }
 
-            var startPoint = fromRect.center + new Vector2(NodeWidth * 0.5f, 0f);
-            var endPoint = toRect.center - new Vector2(NodeWidth * 0.5f, 0f);
-            var offset = GetTransitionCurveOffset(transition);
+            var direction = toRect.center - fromRect.center;
+            if (direction.sqrMagnitude <= Mathf.Epsilon)
+                direction = Vector2.right;
 
-            var startTangentPoint = startPoint + Vector2.right * TransitionTangentLength + offset;
-            var endTangentPoint = endPoint + Vector2.left * TransitionTangentLength + offset;
-            var labelCenterPoint = EvaluateBezier(startPoint, endPoint, startTangentPoint, endTangentPoint, 0.5f);
+            direction.Normalize();
+
+            var offset = GetTransitionLaneOffset(transition);
+            var startPoint = GetRectEdgePoint(fromRect, fromRect.center + offset, direction);
+            var endPoint = GetRectEdgePoint(toRect, toRect.center + offset, -direction);
+            var arrowDirection = endPoint - startPoint;
+            if (arrowDirection.sqrMagnitude <= Mathf.Epsilon)
+                arrowDirection = direction;
 
             return new TransitionVisualData(
-                startPoint,
-                endPoint,
-                startTangentPoint,
-                endTangentPoint,
-                new Rect(labelCenterPoint.x - 60f, labelCenterPoint.y - 12f, 120f, 24f));
+                new[] { startPoint, endPoint },
+                Vector2.Lerp(startPoint, endPoint, 0.5f),
+                arrowDirection.normalized);
         }
 
-        private Vector2 GetTransitionCurveOffset(FsmGraphTransition transition)
+        private Vector2 GetTransitionLaneOffset(FsmGraphTransition transition)
         {
             var pairTransitions = _graph.Transitions
                 .Where(candidate =>
@@ -1023,32 +1006,179 @@ namespace FSMModule.Graph.Editor
             return perpendicular * (centeredLane * TransitionLaneSpacing);
         }
 
-        private static Vector2 EvaluateBezier(Vector2 start, Vector2 end, Vector2 startTangent, Vector2 endTangent, float t)
+        private float GetSelfTransitionLoopOffset(FsmGraphTransition transition)
         {
-            var oneMinusT = 1f - t;
-            return
-                oneMinusT * oneMinusT * oneMinusT * start +
-                3f * oneMinusT * oneMinusT * t * startTangent +
-                3f * oneMinusT * t * t * endTangent +
-                t * t * t * end;
+            var selfTransitions = _graph.Transitions
+                .Where(candidate =>
+                    candidate != null &&
+                    candidate.FromStateId == transition.FromStateId &&
+                    candidate.ToStateId == transition.ToStateId)
+                .OrderBy(candidate => candidate.Id)
+                .ToArray();
+
+            var transitionIndex = Array.FindIndex(selfTransitions, candidate => candidate.Id == transition.Id);
+            if (transitionIndex <= 0)
+                return 0f;
+
+            return transitionIndex * TransitionLaneSpacing;
+        }
+
+        private static Vector2 GetRectEdgePoint(Rect rect, Vector2 direction)
+        {
+            if (direction.sqrMagnitude <= Mathf.Epsilon)
+                return rect.center;
+
+            direction.Normalize();
+
+            var halfWidth = rect.width * 0.5f;
+            var halfHeight = rect.height * 0.5f;
+            var scaleX = Mathf.Approximately(direction.x, 0f) ? float.PositiveInfinity : halfWidth / Mathf.Abs(direction.x);
+            var scaleY = Mathf.Approximately(direction.y, 0f) ? float.PositiveInfinity : halfHeight / Mathf.Abs(direction.y);
+            var scale = Mathf.Min(scaleX, scaleY);
+
+            return rect.center + direction * scale;
+        }
+
+        private static Vector2 GetRectEdgePoint(Rect rect, Vector2 linePoint, Vector2 direction)
+        {
+            if (direction.sqrMagnitude <= Mathf.Epsilon)
+                return rect.center;
+
+            direction.Normalize();
+
+            var hasIntersection = false;
+            var bestForwardT = float.NegativeInfinity;
+            var bestFallbackT = float.NegativeInfinity;
+            var bestForwardPoint = rect.center;
+            var bestFallbackPoint = rect.center;
+
+            TryRectEdgeIntersection(rect, linePoint, direction, rect.xMin, true, ref hasIntersection, ref bestForwardT, ref bestForwardPoint, ref bestFallbackT, ref bestFallbackPoint);
+            TryRectEdgeIntersection(rect, linePoint, direction, rect.xMax, true, ref hasIntersection, ref bestForwardT, ref bestForwardPoint, ref bestFallbackT, ref bestFallbackPoint);
+            TryRectEdgeIntersection(rect, linePoint, direction, rect.yMin, false, ref hasIntersection, ref bestForwardT, ref bestForwardPoint, ref bestFallbackT, ref bestFallbackPoint);
+            TryRectEdgeIntersection(rect, linePoint, direction, rect.yMax, false, ref hasIntersection, ref bestForwardT, ref bestForwardPoint, ref bestFallbackT, ref bestFallbackPoint);
+
+            if (bestForwardT > float.NegativeInfinity)
+                return bestForwardPoint;
+
+            if (hasIntersection)
+                return bestFallbackPoint;
+
+            return GetRectEdgePoint(rect, direction);
+        }
+
+        private static void TryRectEdgeIntersection(
+            Rect rect,
+            Vector2 linePoint,
+            Vector2 direction,
+            float edgeValue,
+            bool verticalEdge,
+            ref bool hasIntersection,
+            ref float bestForwardT,
+            ref Vector2 bestForwardPoint,
+            ref float bestFallbackT,
+            ref Vector2 bestFallbackPoint)
+        {
+            var axisDelta = verticalEdge ? direction.x : direction.y;
+            if (Mathf.Approximately(axisDelta, 0f))
+                return;
+
+            var t = (edgeValue - (verticalEdge ? linePoint.x : linePoint.y)) / axisDelta;
+            var point = linePoint + direction * t;
+
+            var min = verticalEdge ? rect.yMin : rect.xMin;
+            var max = verticalEdge ? rect.yMax : rect.xMax;
+            var edgeCoordinate = verticalEdge ? point.y : point.x;
+            if (edgeCoordinate < min - 0.01f || edgeCoordinate > max + 0.01f)
+                return;
+
+            hasIntersection = true;
+
+            if (t >= 0f)
+            {
+                if (t > bestForwardT)
+                {
+                    bestForwardT = t;
+                    bestForwardPoint = point;
+                }
+
+                return;
+            }
+
+            if (t > bestFallbackT)
+            {
+                bestFallbackT = t;
+                bestFallbackPoint = point;
+            }
+        }
+
+        private static float GetDistanceToPolyline(Vector2 point, IReadOnlyList<Vector2> points)
+        {
+            if (points == null || points.Count < 2)
+                return float.PositiveInfinity;
+
+            var closestDistance = float.PositiveInfinity;
+
+            for (var i = 0; i < points.Count - 1; i++)
+            {
+                var distance = DistancePointToSegment(point, points[i], points[i + 1]);
+                if (distance < closestDistance)
+                    closestDistance = distance;
+            }
+
+            return closestDistance;
+        }
+
+        private static void DrawTransitionPolyline(IReadOnlyList<Vector2> points)
+        {
+            if (points == null || points.Count < 2)
+                return;
+
+            for (var i = 0; i < points.Count - 1; i++)
+                Handles.DrawAAPolyLine(3f, points[i], points[i + 1]);
+        }
+
+        private static float DistancePointToSegment(Vector2 point, Vector2 start, Vector2 end)
+        {
+            var segment = end - start;
+            var lengthSquared = segment.sqrMagnitude;
+            if (lengthSquared <= Mathf.Epsilon)
+                return Vector2.Distance(point, start);
+
+            var t = Mathf.Clamp01(Vector2.Dot(point - start, segment) / lengthSquared);
+            var projection = start + segment * t;
+            return Vector2.Distance(point, projection);
+        }
+
+        private static void DrawTransitionArrow(Vector2 arrowTip, Vector2 arrowDirection)
+        {
+            if (arrowDirection.sqrMagnitude <= Mathf.Epsilon)
+                arrowDirection = Vector2.right;
+
+            arrowDirection.Normalize();
+
+            var perpendicular = new Vector2(-arrowDirection.y, arrowDirection.x);
+            var arrowBase = arrowTip - arrowDirection * TransitionArrowLength;
+            var leftPoint = arrowBase + perpendicular * (TransitionArrowWidth * 0.5f);
+            var rightPoint = arrowBase - perpendicular * (TransitionArrowWidth * 0.5f);
+
+            Handles.DrawAAConvexPolygon(arrowTip, leftPoint, rightPoint);
         }
 
         private readonly struct TransitionVisualData
         {
-            public TransitionVisualData(Vector2 start, Vector2 end, Vector2 startTangent, Vector2 endTangent, Rect labelRect)
+            public TransitionVisualData(
+                Vector2[] points,
+                Vector2 arrowTip,
+                Vector2 arrowDirection)
             {
-                Start = start;
-                End = end;
-                StartTangent = startTangent;
-                EndTangent = endTangent;
-                LabelRect = labelRect;
+                Points = points;
+                ArrowTip = arrowTip;
+                ArrowDirection = arrowDirection;
             }
 
-            public Vector2 Start { get; }
-            public Vector2 End { get; }
-            public Vector2 StartTangent { get; }
-            public Vector2 EndTangent { get; }
-            public Rect LabelRect { get; }
+            public Vector2[] Points { get; }
+            public Vector2 ArrowTip { get; }
+            public Vector2 ArrowDirection { get; }
         }
 
         private Vector2 ScreenToCanvasPosition(Vector2 mousePosition)
