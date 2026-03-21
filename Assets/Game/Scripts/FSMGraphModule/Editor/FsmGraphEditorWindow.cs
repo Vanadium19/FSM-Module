@@ -10,7 +10,12 @@ namespace FSMModule.Graph.Editor
     public sealed class FsmGraphEditorWindow : EditorWindow
     {
         private const float ToolbarHeight = 24f;
-        private const float InspectorWidth = 360f;
+        private const float DefaultInspectorWidth = 240f;
+        private const float MinInspectorWidth = 240f;
+        private const float MaxInspectorWidth = 420f;
+        private const float MinCanvasWidth = 320f;
+        private const float InspectorSplitterWidth = 2f;
+        private const string InspectorWidthPrefsKey = "FSMModule.Graph.Editor.InspectorWidth";
         private const float NodeWidth = 248f;
         private const float NodeHeight = 108f;
         private const float NodeHeaderHeight = 38f;
@@ -80,6 +85,7 @@ namespace FSMModule.Graph.Editor
 
         private FsmGraphAsset _graph;
         private FsmGraphRunner _runner;
+        private float _inspectorWidth = DefaultInspectorWidth;
         private Vector2 _canvasPan = new(120f, 120f);
         private Vector2 _inspectorScroll;
         private string _blackboardSearch = string.Empty;
@@ -93,6 +99,7 @@ namespace FSMModule.Graph.Editor
         private string _draggedStateId;
         private Vector2 _dragOffset;
         private bool _isPanning;
+        private bool _isResizingInspector;
         private Vector2 _panMouseStart;
         private Vector2 _panStart;
 
@@ -152,6 +159,7 @@ namespace FSMModule.Graph.Editor
         private void OnEnable()
         {
             wantsMouseMove = true;
+            _inspectorWidth = EditorPrefs.GetFloat(InspectorWidthPrefsKey, DefaultInspectorWidth);
             Undo.undoRedoPerformed += HandleUndoRedoPerformed;
             EditorApplication.playModeStateChanged += HandlePlayModeStateChanged;
 
@@ -218,10 +226,22 @@ namespace FSMModule.Graph.Editor
                 return;
             }
 
-            var canvasRect = new Rect(0f, ToolbarHeight, position.width - InspectorWidth, position.height - ToolbarHeight);
-            var inspectorRect = new Rect(canvasRect.xMax, ToolbarHeight, InspectorWidth, position.height - ToolbarHeight);
+            var inspectorWidth = GetInspectorWidth();
+            var splitterRect = new Rect(
+                position.width - inspectorWidth - InspectorSplitterWidth,
+                ToolbarHeight,
+                InspectorSplitterWidth,
+                position.height - ToolbarHeight);
+
+            HandleInspectorResize(splitterRect, Event.current);
+            inspectorWidth = GetInspectorWidth();
+            splitterRect.x = position.width - inspectorWidth - InspectorSplitterWidth;
+
+            var canvasRect = new Rect(0f, ToolbarHeight, splitterRect.x, position.height - ToolbarHeight);
+            var inspectorRect = new Rect(splitterRect.xMax, ToolbarHeight, inspectorWidth, position.height - ToolbarHeight);
 
             DrawCanvas(canvasRect);
+            DrawInspectorSplitter(splitterRect);
             DrawInspector(inspectorRect);
 
             if (GUI.changed)
@@ -598,7 +618,8 @@ namespace FSMModule.Graph.Editor
             EditorGUI.DrawRect(new Rect(inspectorRect.x, inspectorRect.y, 1f, inspectorRect.height), InspectorDividerColor);
 
             GUILayout.BeginArea(inspectorRect);
-            _inspectorScroll = EditorGUILayout.BeginScrollView(_inspectorScroll);
+            _inspectorScroll = EditorGUILayout.BeginScrollView(new Vector2(0f, _inspectorScroll.y), GUIStyle.none, GUI.skin.verticalScrollbar);
+            _inspectorScroll.x = 0f;
 
             GUILayout.Space(10f);
             DrawGraphSection();
@@ -637,6 +658,13 @@ namespace FSMModule.Graph.Editor
         {
             var labelStyle = _inspectorMetaLabelStyle ?? EditorStyles.miniLabel;
             var valueStyle = _inspectorMetaValueStyle ?? EditorStyles.label;
+
+            if (UseCompactInspectorLayout)
+            {
+                GUILayout.Label(label, labelStyle);
+                GUILayout.Label(value, valueStyle);
+                return;
+            }
 
             using (new EditorGUILayout.HorizontalScope())
             {
@@ -677,8 +705,17 @@ namespace FSMModule.Graph.Editor
                     var stateNames = _graph.States.Select(state => state.Name).ToArray();
                     var currentIndex = Mathf.Max(0, _graph.States.FindIndex(state => state.Id == _graph.InitialStateId));
                     int updatedIndex;
-                    using (new GuiBackgroundColorScope(InspectorControlTint))
-                        updatedIndex = EditorGUILayout.Popup("Initial State", currentIndex, stateNames);
+                    if (UseCompactInspectorLayout)
+                    {
+                        GUILayout.Label("Initial State", _inspectorMetaLabelStyle ?? EditorStyles.miniLabel);
+                        using (new GuiBackgroundColorScope(InspectorControlTint))
+                            updatedIndex = EditorGUILayout.Popup(currentIndex, stateNames);
+                    }
+                    else
+                    {
+                        using (new GuiBackgroundColorScope(InspectorControlTint))
+                            updatedIndex = EditorGUILayout.Popup("Initial State", currentIndex, stateNames);
+                    }
 
                     if (updatedIndex >= 0 && updatedIndex < _graph.States.Count && updatedIndex != currentIndex)
                     {
@@ -941,8 +978,17 @@ namespace FSMModule.Graph.Editor
             GUILayout.Label("State Node", _inspectorSectionSubtitleStyle ?? EditorStyles.miniBoldLabel);
 
             string updatedName;
-            using (new GuiBackgroundColorScope(InspectorControlTint))
-                updatedName = EditorGUILayout.TextField("Name", state.Name);
+            if (UseCompactInspectorLayout)
+            {
+                GUILayout.Label("Name", _inspectorMetaLabelStyle ?? EditorStyles.miniLabel);
+                using (new GuiBackgroundColorScope(InspectorControlTint))
+                    updatedName = EditorGUILayout.TextField(state.Name);
+            }
+            else
+            {
+                using (new GuiBackgroundColorScope(InspectorControlTint))
+                    updatedName = EditorGUILayout.TextField("Name", state.Name);
+            }
 
             if (updatedName != state.Name)
             {
@@ -953,8 +999,17 @@ namespace FSMModule.Graph.Editor
 
             EditorGUI.BeginChangeCheck();
             FsmStateBehaviour updatedState;
-            using (new GuiBackgroundColorScope(InspectorControlTint))
-                updatedState = (FsmStateBehaviour)EditorGUILayout.ObjectField("Behaviour", state.State, typeof(FsmStateBehaviour), false);
+            if (UseCompactInspectorLayout)
+            {
+                GUILayout.Label("Behaviour", _inspectorMetaLabelStyle ?? EditorStyles.miniLabel);
+                using (new GuiBackgroundColorScope(InspectorControlTint))
+                    updatedState = (FsmStateBehaviour)EditorGUILayout.ObjectField(state.State, typeof(FsmStateBehaviour), false);
+            }
+            else
+            {
+                using (new GuiBackgroundColorScope(InspectorControlTint))
+                    updatedState = (FsmStateBehaviour)EditorGUILayout.ObjectField("Behaviour", state.State, typeof(FsmStateBehaviour), false);
+            }
             if (EditorGUI.EndChangeCheck())
             {
                 RecordGraph("Assign State Behaviour");
@@ -963,15 +1018,29 @@ namespace FSMModule.Graph.Editor
                 MarkDirty();
             }
 
-            using (new EditorGUILayout.HorizontalScope())
+            if (UseCompactInspectorLayout)
             {
-                if (GUILayout.Button("Create Behaviour", _inspectorButtonStyle))
+                if (GUILayout.Button("Create Behaviour", _inspectorButtonStyle ?? GUI.skin.button))
                     ShowCreateStateMenu(state);
 
-                if (GUILayout.Button("Start Transition", _inspectorButtonStyle))
+                if (GUILayout.Button("Start Transition", _inspectorButtonStyle ?? GUI.skin.button))
                 {
                     _pendingTransitionFromStateId = state.Id;
                     _selectedTransitionId = null;
+                }
+            }
+            else
+            {
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    if (GUILayout.Button("Create Behaviour", _inspectorButtonStyle ?? GUI.skin.button))
+                        ShowCreateStateMenu(state);
+
+                    if (GUILayout.Button("Start Transition", _inspectorButtonStyle ?? GUI.skin.button))
+                    {
+                        _pendingTransitionFromStateId = state.Id;
+                        _selectedTransitionId = null;
+                    }
                 }
             }
 
@@ -982,7 +1051,7 @@ namespace FSMModule.Graph.Editor
 
             EditorGUILayout.Space();
 
-            if (GUILayout.Button("Delete State", _inspectorDangerButtonStyle))
+            if (GUILayout.Button("Delete State", _inspectorDangerButtonStyle ?? GUI.skin.button))
                 DeleteState(state);
         }
 
@@ -1000,10 +1069,22 @@ namespace FSMModule.Graph.Editor
             {
                 int updatedFromIndex;
                 int updatedToIndex;
-                using (new GuiBackgroundColorScope(InspectorControlTint))
-                    updatedFromIndex = EditorGUILayout.Popup("From", fromIndex, stateNames);
-                using (new GuiBackgroundColorScope(InspectorControlTint))
-                    updatedToIndex = EditorGUILayout.Popup("To", toIndex, stateNames);
+                if (UseCompactInspectorLayout)
+                {
+                    GUILayout.Label("From", _inspectorMetaLabelStyle ?? EditorStyles.miniLabel);
+                    using (new GuiBackgroundColorScope(InspectorControlTint))
+                        updatedFromIndex = EditorGUILayout.Popup(fromIndex, stateNames);
+                    GUILayout.Label("To", _inspectorMetaLabelStyle ?? EditorStyles.miniLabel);
+                    using (new GuiBackgroundColorScope(InspectorControlTint))
+                        updatedToIndex = EditorGUILayout.Popup(toIndex, stateNames);
+                }
+                else
+                {
+                    using (new GuiBackgroundColorScope(InspectorControlTint))
+                        updatedFromIndex = EditorGUILayout.Popup("From", fromIndex, stateNames);
+                    using (new GuiBackgroundColorScope(InspectorControlTint))
+                        updatedToIndex = EditorGUILayout.Popup("To", toIndex, stateNames);
+                }
 
                 if (updatedFromIndex != fromIndex)
                 {
@@ -1024,14 +1105,14 @@ namespace FSMModule.Graph.Editor
             {
                 DrawInspectorInfo("This transition has no settings asset yet.");
 
-                if (GUILayout.Button("Create Standard Transition", _inspectorButtonStyle))
+                if (GUILayout.Button("Create Standard Transition", _inspectorButtonStyle ?? GUI.skin.button))
                     ReplaceWithStandardTransition(transition);
             }
             else if (transition.Transition is not FsmBlackboardTransitionBehaviour)
             {
                 DrawInspectorInfo("Legacy custom transition detected. New transitions use the built-in blackboard condition workflow.");
 
-                if (GUILayout.Button("Replace With Standard Transition", _inspectorButtonStyle))
+                if (GUILayout.Button("Replace With Standard Transition", _inspectorButtonStyle ?? GUI.skin.button))
                     ReplaceWithStandardTransition(transition);
 
                 DrawEmbeddedEditor(transition.Transition);
@@ -1043,7 +1124,7 @@ namespace FSMModule.Graph.Editor
 
             EditorGUILayout.Space();
 
-            if (GUILayout.Button("Delete Transition", _inspectorDangerButtonStyle))
+            if (GUILayout.Button("Delete Transition", _inspectorDangerButtonStyle ?? GUI.skin.button))
                 DeleteTransition(transition);
         }
 
@@ -1061,8 +1142,37 @@ namespace FSMModule.Graph.Editor
 
             EditorGUILayout.Space();
             GUILayout.Label("Behaviour Settings", _inspectorSectionSubtitleStyle ?? EditorStyles.miniBoldLabel);
-            using (new GuiBackgroundColorScope(InspectorControlTint))
-                _embeddedEditor.OnInspectorGUI();
+
+            var previousWideMode = EditorGUIUtility.wideMode;
+            var previousHierarchyMode = EditorGUIUtility.hierarchyMode;
+            var previousLabelWidth = EditorGUIUtility.labelWidth;
+            var previousFieldWidth = EditorGUIUtility.fieldWidth;
+            var previousIndentLevel = EditorGUI.indentLevel;
+            var maxWidth = Mathf.Max(110f, GetInspectorWidth() - 32f);
+
+            try
+            {
+                if (UseCompactInspectorLayout)
+                {
+                    EditorGUIUtility.wideMode = false;
+                    EditorGUIUtility.hierarchyMode = false;
+                    EditorGUIUtility.labelWidth = 78f;
+                    EditorGUIUtility.fieldWidth = 0f;
+                    EditorGUI.indentLevel = 0;
+                }
+
+                using (new EditorGUILayout.VerticalScope(GUILayout.MaxWidth(maxWidth)))
+                using (new GuiBackgroundColorScope(InspectorControlTint))
+                    _embeddedEditor.OnInspectorGUI();
+            }
+            finally
+            {
+                EditorGUIUtility.wideMode = previousWideMode;
+                EditorGUIUtility.hierarchyMode = previousHierarchyMode;
+                EditorGUIUtility.labelWidth = previousLabelWidth;
+                EditorGUIUtility.fieldWidth = previousFieldWidth;
+                EditorGUI.indentLevel = previousIndentLevel;
+            }
         }
 
         private bool CancelCurrentAction()
@@ -1354,7 +1464,7 @@ namespace FSMModule.Graph.Editor
 
         private Vector2 GetCanvasCenterPosition()
         {
-            var canvasSize = new Vector2(position.width - InspectorWidth, position.height - ToolbarHeight);
+            var canvasSize = new Vector2(position.width - GetInspectorWidth() - InspectorSplitterWidth, position.height - ToolbarHeight);
             return (canvasSize * 0.5f) - _canvasPan - new Vector2(NodeWidth * 0.5f, NodeHeight * 0.5f);
         }
 
@@ -1373,9 +1483,59 @@ namespace FSMModule.Graph.Editor
             }
 
             var graphSize = max - min;
-            var canvasSize = new Vector2(position.width - InspectorWidth, position.height - ToolbarHeight);
+            var canvasSize = new Vector2(position.width - GetInspectorWidth() - InspectorSplitterWidth, position.height - ToolbarHeight);
             _canvasPan = (canvasSize - graphSize) * 0.5f - min;
             Repaint();
+        }
+
+        private float GetInspectorWidth()
+        {
+            var maxWidth = Mathf.Min(MaxInspectorWidth, Mathf.Max(MinInspectorWidth, position.width - MinCanvasWidth - InspectorSplitterWidth));
+            _inspectorWidth = Mathf.Clamp(_inspectorWidth, MinInspectorWidth, maxWidth);
+            return _inspectorWidth;
+        }
+
+        private void HandleInspectorResize(Rect splitterRect, Event currentEvent)
+        {
+            if (currentEvent == null)
+                return;
+
+            EditorGUIUtility.AddCursorRect(splitterRect, MouseCursor.ResizeHorizontal);
+
+            if (currentEvent.type == EventType.MouseDown && currentEvent.button == 0 && splitterRect.Contains(currentEvent.mousePosition))
+            {
+                _isResizingInspector = true;
+                currentEvent.Use();
+                return;
+            }
+
+            if (_isResizingInspector && currentEvent.type == EventType.MouseDrag)
+            {
+                var nextWidth = position.width - currentEvent.mousePosition.x - InspectorSplitterWidth;
+                var maxWidth = Mathf.Min(MaxInspectorWidth, Mathf.Max(MinInspectorWidth, position.width - MinCanvasWidth - InspectorSplitterWidth));
+                _inspectorWidth = Mathf.Clamp(nextWidth, MinInspectorWidth, maxWidth);
+                EditorPrefs.SetFloat(InspectorWidthPrefsKey, _inspectorWidth);
+                GUI.changed = true;
+                Repaint();
+                currentEvent.Use();
+                return;
+            }
+
+            if (_isResizingInspector && (currentEvent.type == EventType.MouseUp || currentEvent.rawType == EventType.MouseUp))
+            {
+                _isResizingInspector = false;
+                EditorPrefs.SetFloat(InspectorWidthPrefsKey, _inspectorWidth);
+                currentEvent.Use();
+            }
+        }
+
+        private void DrawInspectorSplitter(Rect splitterRect)
+        {
+            var isHovered = splitterRect.Contains(Event.current.mousePosition);
+            var color = isHovered || _isResizingInspector
+                ? new Color(InspectorDividerColor.r, InspectorDividerColor.g, InspectorDividerColor.b, 0.45f)
+                : InspectorDividerColor;
+            EditorGUI.DrawRect(splitterRect, color);
         }
 
         private FsmGraphStateNode FindStateAt(Rect canvasRect, Vector2 mousePosition)
@@ -1902,8 +2062,8 @@ namespace FSMModule.Graph.Editor
             _inspectorSectionStyle = new GUIStyle(GUIStyle.none)
             {
                 border = new RectOffset(8, 8, 8, 8),
-                padding = new RectOffset(12, 12, 12, 12),
-                margin = new RectOffset(10, 10, 0, 0),
+                padding = new RectOffset(10, 10, 10, 10),
+                margin = new RectOffset(8, 8, 0, 0),
                 normal =
                 {
                     background = _inspectorSectionTexture,
@@ -1963,14 +2123,14 @@ namespace FSMModule.Graph.Editor
                 _inspectorButtonHoverTexture,
                 _inspectorButtonActiveTexture,
                 11,
-                new RectOffset(10, 10, 7, 7));
+                new RectOffset(8, 8, 6, 6));
 
             _inspectorDangerButtonStyle = CreateInspectorButtonStyle(
                 _inspectorDangerButtonTexture,
                 _inspectorDangerButtonHoverTexture,
                 _inspectorDangerButtonActiveTexture,
                 11,
-                new RectOffset(10, 10, 7, 7));
+                new RectOffset(8, 8, 6, 6));
 
             _inspectorMiniButtonStyle = CreateInspectorButtonStyle(
                 _inspectorButtonTexture,
@@ -2023,6 +2183,8 @@ namespace FSMModule.Graph.Editor
             style.onFocused.textColor = InspectorButtonTextColor;
             return style;
         }
+
+        private bool UseCompactInspectorLayout => GetInspectorWidth() <= 220f;
 
         private static Texture2D CreateRoundedTexture(int width, int height, Color fillColor, Color borderColor, int radius)
         {
