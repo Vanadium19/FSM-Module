@@ -80,6 +80,7 @@ namespace FSMModule.Graph.Editor
 
         private void OnEnable()
         {
+            wantsMouseMove = true;
             Undo.undoRedoPerformed += HandleUndoRedoPerformed;
 
             if (_graph == null && TryGetSelectionContext(out var graph, out var runner))
@@ -734,6 +735,12 @@ namespace FSMModule.Graph.Editor
         {
             if (!canvasRect.Contains(currentEvent.mousePosition))
                 return;
+
+            if (!string.IsNullOrWhiteSpace(_pendingTransitionFromStateId) &&
+                (currentEvent.type == EventType.MouseMove || currentEvent.type == EventType.MouseDrag))
+            {
+                Repaint();
+            }
 
             if (currentEvent.type == EventType.MouseDown && (currentEvent.button == 2 || (currentEvent.button == 0 && currentEvent.alt)))
             {
