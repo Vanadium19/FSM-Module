@@ -33,6 +33,7 @@ namespace FSMModule.Graph
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
 
+            EnsureBlackboardParameterMetadata();
             ApplyBlackboardDefaults(context.Blackboard);
 
             var runtimeObjects = new List<Object>();
@@ -52,7 +53,7 @@ namespace FSMModule.Graph
                     stateNode.Id,
                     injectedBindings,
                     logContext);
-                runtimeState.Initialize(context);
+                runtimeState.Initialize(context, this);
 
                 runtimeObjects.Add(runtimeState);
                 runtimeStates[stateNode.Id] = new RuntimeStateAdapter(runtimeState);
@@ -77,7 +78,7 @@ namespace FSMModule.Graph
                     transition.Id,
                     injectedBindings,
                     logContext);
-                runtimeTransition.Initialize(context);
+                runtimeTransition.Initialize(context, this);
 
                 runtimeObjects.Add(runtimeTransition);
                 runtimeTransitions.Add(new StateTransition<string>(
@@ -99,6 +100,27 @@ namespace FSMModule.Graph
             foreach (var parameter in blackboardParameters)
                 parameter?.ApplyTo(blackboard);
         }
+
+        public bool EnsureBlackboardParameterMetadata()
+        {
+            var changed = false;
+
+            foreach (var parameter in blackboardParameters)
+            {
+                if (parameter == null)
+                    continue;
+
+                changed |= parameter.EnsureMetadata();
+            }
+
+            return changed;
+        }
+
+        public FsmBlackboardParameterDefinition FindBlackboardParameterById(string parameterId) =>
+            blackboardParameters.Find(parameter => parameter != null && parameter.Id == parameterId);
+
+        public FsmBlackboardParameterDefinition FindBlackboardParameterByKey(string parameterKey) =>
+            blackboardParameters.Find(parameter => parameter != null && parameter.Key == parameterKey);
 
         public FsmGraphStateNode FindState(string stateId) =>
             states.Find(state => state != null && state.Id == stateId);

@@ -7,7 +7,6 @@ namespace FSMModule.Examples
     public sealed class PatrolAttackExampleInput : MonoBehaviour
     {
         [SerializeField] private FsmGraphRunner runner;
-        [FsmBlackboardKey(BlackboardParameterType.Bool)]
         [SerializeField] private string attackKey = PatrolAttackExampleKeys.ShouldAttack;
         [SerializeField] private KeyCode toggleAttackKey = KeyCode.Space;
         [SerializeField] private KeyCode forcePatrolKey = KeyCode.Alpha1;

@@ -1060,6 +1060,10 @@ namespace FSMModule.Graph.Editor
         private void SetGraph(FsmGraphAsset graph)
         {
             _graph = graph;
+
+            if (_graph != null && _graph.EnsureBlackboardParameterMetadata())
+                EditorUtility.SetDirty(_graph);
+
             _selectedStateId = null;
             _selectedTransitionId = null;
             _pendingTransitionFromStateId = null;

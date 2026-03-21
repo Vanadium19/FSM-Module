@@ -6,11 +6,18 @@ namespace FSMModule.Graph
     [Serializable]
     public sealed class FsmBlackboardParameterDefinition
     {
+        [SerializeField] private string id;
         [SerializeField] private string key = "Parameter";
         [SerializeField] private BlackboardParameterType type = BlackboardParameterType.Bool;
         [SerializeField] private bool boolValue;
         [SerializeField] private int intValue;
         [SerializeField] private float floatValue;
+
+        public string Id
+        {
+            get => id;
+            set => id = value;
+        }
 
         public string Key
         {
@@ -40,6 +47,15 @@ namespace FSMModule.Graph
         {
             get => floatValue;
             set => floatValue = value;
+        }
+
+        public bool EnsureMetadata()
+        {
+            if (!string.IsNullOrWhiteSpace(id))
+                return false;
+
+            id = Guid.NewGuid().ToString("N");
+            return true;
         }
 
         public void ApplyTo(Blackboard blackboard)

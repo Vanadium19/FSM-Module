@@ -23,12 +23,19 @@ namespace FSMModule.Graph
     [Serializable]
     public sealed class FsmBlackboardTransitionCondition
     {
+        [SerializeField] private string parameterId;
         [SerializeField] private string parameterKey;
         [SerializeField] private BlackboardParameterType parameterType = BlackboardParameterType.Bool;
         [SerializeField] private FsmNumericComparisonOperator comparisonOperator = FsmNumericComparisonOperator.Greater;
         [SerializeField] private bool boolValue = true;
         [SerializeField] private int intValue;
         [SerializeField] private float floatValue;
+
+        public string ParameterId
+        {
+            get => parameterId;
+            set => parameterId = value;
+        }
 
         public string ParameterKey
         {
@@ -66,18 +73,43 @@ namespace FSMModule.Graph
             set => floatValue = value;
         }
 
-        public bool Evaluate(Blackboard blackboard)
+        public bool Evaluate(Blackboard blackboard, FsmGraphAsset graph)
         {
-            if (blackboard == null || string.IsNullOrWhiteSpace(parameterKey))
+            if (blackboard == null || !TryResolveParameter(graph, out var parameter))
                 return false;
+
+            var resolvedKey = parameter.Key;
 
             return parameterType switch
             {
-                BlackboardParameterType.Bool => blackboard.TryGetValue(parameterKey, out bool boolResult) && boolResult == boolValue,
-                BlackboardParameterType.Int => blackboard.TryGetValue(parameterKey, out int intResult) && CompareNumeric(intResult, intValue),
-                BlackboardParameterType.Float => blackboard.TryGetValue(parameterKey, out float floatResult) && CompareNumeric(floatResult, floatValue),
+                BlackboardParameterType.Bool => blackboard.TryGetValue(resolvedKey, out bool boolResult) && boolResult == boolValue,
+                BlackboardParameterType.Int => blackboard.TryGetValue(resolvedKey, out int intResult) && CompareNumeric(intResult, intValue),
+                BlackboardParameterType.Float => blackboard.TryGetValue(resolvedKey, out float floatResult) && CompareNumeric(floatResult, floatValue),
                 _ => false,
             };
+        }
+
+        public bool TryResolveParameter(FsmGraphAsset graph, out FsmBlackboardParameterDefinition parameter)
+        {
+            parameter = null;
+
+            if (graph == null)
+                return false;
+
+            var hasStableId = !string.IsNullOrWhiteSpace(parameterId);
+            if (hasStableId)
+                parameter = graph.FindBlackboardParameterById(parameterId);
+
+            if (!hasStableId && parameter == null && !string.IsNullOrWhiteSpace(parameterKey))
+                parameter = graph.FindBlackboardParameterByKey(parameterKey);
+
+            if (parameter == null)
+                return false;
+
+            parameterId = parameter.Id;
+            parameterKey = parameter.Key;
+            parameterType = parameter.Type;
+            return true;
         }
 
         private bool CompareNumeric(int currentValue, int expectedValue) =>
@@ -124,7 +156,7 @@ namespace FSMModule.Graph
                 for (var i = 0; i < conditions.Count; i++)
                 {
                     var condition = conditions[i];
-                    if (condition == null || !condition.Evaluate(Blackboard))
+                    if (condition == null || !condition.Evaluate(Blackboard, Graph))
                         return false;
                 }
 
@@ -134,7 +166,7 @@ namespace FSMModule.Graph
             for (var i = 0; i < conditions.Count; i++)
             {
                 var condition = conditions[i];
-                if (condition != null && condition.Evaluate(Blackboard))
+                if (condition != null && condition.Evaluate(Blackboard, Graph))
                     return true;
             }
 

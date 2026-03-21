@@ -10,6 +10,7 @@ namespace FSMModule.Graph.Editor
     {
         private const string ConditionModePropertyName = "conditionMode";
         private const string ConditionsPropertyName = "conditions";
+        private const string ParameterIdPropertyName = "parameterId";
         private const string ParameterKeyPropertyName = "parameterKey";
         private const string ParameterTypePropertyName = "parameterType";
         private const string ComparisonOperatorPropertyName = "comparisonOperator";
@@ -71,6 +72,7 @@ namespace FSMModule.Graph.Editor
         {
             var graph = GetOwningGraph();
             var conditionProperty = _conditionsProperty.GetArrayElementAtIndex(index);
+            var parameterIdProperty = conditionProperty.FindPropertyRelative(ParameterIdPropertyName);
             var parameterKeyProperty = conditionProperty.FindPropertyRelative(ParameterKeyPropertyName);
             var parameterTypeProperty = conditionProperty.FindPropertyRelative(ParameterTypePropertyName);
             var comparisonOperatorProperty = conditionProperty.FindPropertyRelative(ComparisonOperatorPropertyName);
@@ -83,8 +85,8 @@ namespace FSMModule.Graph.Editor
             var operationRect = new Rect(parameterRect.xMax + 4f, contentRect.y, contentRect.width * 0.26f, contentRect.height);
             var valueRect = new Rect(operationRect.xMax + 4f, contentRect.y, contentRect.xMax - operationRect.xMax - 4f, contentRect.height);
 
-            SyncConditionType(graph, parameterKeyProperty, parameterTypeProperty);
-            DrawParameterPopup(parameterRect, graph, parameterKeyProperty, parameterTypeProperty);
+            SyncConditionReference(graph, parameterIdProperty, parameterKeyProperty, parameterTypeProperty);
+            DrawParameterPopup(parameterRect, graph, parameterIdProperty, parameterKeyProperty, parameterTypeProperty);
 
             var parameterType = (BlackboardParameterType)parameterTypeProperty.enumValueIndex;
             switch (parameterType)
@@ -110,6 +112,7 @@ namespace FSMModule.Graph.Editor
             _conditionsProperty.InsertArrayElementAtIndex(index);
 
             var conditionProperty = _conditionsProperty.GetArrayElementAtIndex(index);
+            var parameterIdProperty = conditionProperty.FindPropertyRelative(ParameterIdPropertyName);
             var parameterKeyProperty = conditionProperty.FindPropertyRelative(ParameterKeyPropertyName);
             var parameterTypeProperty = conditionProperty.FindPropertyRelative(ParameterTypePropertyName);
             var comparisonOperatorProperty = conditionProperty.FindPropertyRelative(ComparisonOperatorPropertyName);
@@ -121,6 +124,7 @@ namespace FSMModule.Graph.Editor
                 ? graph.BlackboardParameters.FirstOrDefault(parameter => parameter != null && !string.IsNullOrWhiteSpace(parameter.Key))
                 : null;
 
+            parameterIdProperty.stringValue = defaultParameter?.Id ?? string.Empty;
             parameterKeyProperty.stringValue = defaultParameter?.Key ?? string.Empty;
             parameterTypeProperty.enumValueIndex = (int)(defaultParameter?.Type ?? BlackboardParameterType.Bool);
             comparisonOperatorProperty.enumValueIndex = (int)FsmNumericComparisonOperator.Greater;
@@ -140,6 +144,7 @@ namespace FSMModule.Graph.Editor
         private static void DrawParameterPopup(
             Rect rect,
             FsmGraphAsset graph,
+            SerializedProperty parameterIdProperty,
             SerializedProperty parameterKeyProperty,
             SerializedProperty parameterTypeProperty)
         {
@@ -163,12 +168,17 @@ namespace FSMModule.Graph.Editor
             var optionNames = parameters
                 .Select(parameter => $"{parameter.Key} ({parameter.Type})")
                 .ToList();
+            var optionIds = parameters.Select(parameter => parameter.Id).ToList();
             var optionValues = parameters.Select(parameter => parameter.Key).ToList();
 
-            var selectedIndex = optionValues.IndexOf(parameterKeyProperty.stringValue);
-            if (!string.IsNullOrWhiteSpace(parameterKeyProperty.stringValue) && selectedIndex < 0)
+            var selectedIndex = !string.IsNullOrWhiteSpace(parameterIdProperty.stringValue)
+                ? optionIds.IndexOf(parameterIdProperty.stringValue)
+                : optionValues.IndexOf(parameterKeyProperty.stringValue);
+
+            if (selectedIndex < 0 && !string.IsNullOrWhiteSpace(parameterKeyProperty.stringValue))
             {
                 optionNames.Add($"Missing: {parameterKeyProperty.stringValue}");
+                optionIds.Add(parameterIdProperty.stringValue);
                 optionValues.Add(parameterKeyProperty.stringValue);
                 selectedIndex = optionValues.Count - 1;
             }
@@ -179,25 +189,36 @@ namespace FSMModule.Graph.Editor
             selectedIndex = EditorGUI.Popup(rect, selectedIndex, optionNames.ToArray());
             if (EditorGUI.EndChangeCheck() && selectedIndex >= 0 && selectedIndex < optionValues.Count)
             {
+                parameterIdProperty.stringValue = selectedIndex < optionIds.Count ? optionIds[selectedIndex] : string.Empty;
                 parameterKeyProperty.stringValue = optionValues[selectedIndex];
-                SyncConditionType(graph, parameterKeyProperty, parameterTypeProperty);
+                SyncConditionReference(graph, parameterIdProperty, parameterKeyProperty, parameterTypeProperty);
             }
         }
 
-        private static void SyncConditionType(
+        private static void SyncConditionReference(
             FsmGraphAsset graph,
+            SerializedProperty parameterIdProperty,
             SerializedProperty parameterKeyProperty,
             SerializedProperty parameterTypeProperty)
         {
-            if (graph == null || string.IsNullOrWhiteSpace(parameterKeyProperty.stringValue))
+            if (graph == null)
                 return;
 
-            var parameter = graph.BlackboardParameters.FirstOrDefault(candidate =>
-                candidate != null &&
-                candidate.Key == parameterKeyProperty.stringValue);
+            FsmBlackboardParameterDefinition parameter = null;
+            var hasStableId = !string.IsNullOrWhiteSpace(parameterIdProperty.stringValue);
 
-            if (parameter != null)
-                parameterTypeProperty.enumValueIndex = (int)parameter.Type;
+            if (hasStableId)
+                parameter = graph.FindBlackboardParameterById(parameterIdProperty.stringValue);
+
+            if (!hasStableId && parameter == null && !string.IsNullOrWhiteSpace(parameterKeyProperty.stringValue))
+                parameter = graph.FindBlackboardParameterByKey(parameterKeyProperty.stringValue);
+
+            if (parameter == null)
+                return;
+
+            parameterIdProperty.stringValue = parameter.Id;
+            parameterKeyProperty.stringValue = parameter.Key;
+            parameterTypeProperty.enumValueIndex = (int)parameter.Type;
         }
 
         private FsmGraphAsset GetOwningGraph()
@@ -206,7 +227,11 @@ namespace FSMModule.Graph.Editor
             if (string.IsNullOrWhiteSpace(assetPath))
                 return null;
 
-            return AssetDatabase.LoadMainAssetAtPath(assetPath) as FsmGraphAsset;
+            var graph = AssetDatabase.LoadMainAssetAtPath(assetPath) as FsmGraphAsset;
+            if (graph != null && graph.EnsureBlackboardParameterMetadata())
+                EditorUtility.SetDirty(graph);
+
+            return graph;
         }
     }
 }
