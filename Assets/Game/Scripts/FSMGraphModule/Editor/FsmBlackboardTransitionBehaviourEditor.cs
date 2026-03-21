@@ -51,7 +51,7 @@ namespace FSMModule.Graph.Editor
             }
 
             if (graph.BlackboardParameters.Count == 0)
-                EditorGUILayout.HelpBox("Add blackboard parameters to the graph before configuring transition conditions.", MessageType.Info);
+                EditorGUILayout.HelpBox("Add parameters to the graph before configuring transition conditions.", MessageType.Info);
 
             _conditionsList.DoLayoutList();
 

@@ -32,7 +32,7 @@ namespace FSMModule.Graph
                 throw new ArgumentNullException(nameof(context));
 
             EnsureBlackboardParameterMetadata();
-            ApplyBlackboardDefaults(context.Blackboard);
+            ApplyParameterDefaults(context.Parameters);
 
             var runtimeObjects = new List<Object>();
             var runtimeStates = new Dictionary<string, IState>();
@@ -90,13 +90,13 @@ namespace FSMModule.Graph
             return new FsmGraphRuntime(stateMachine, runtimeObjects);
         }
 
-        public void ApplyBlackboardDefaults(Blackboard blackboard)
+        public void ApplyParameterDefaults(FsmParameters parameters)
         {
-            if (blackboard == null)
+            if (parameters == null)
                 return;
 
             foreach (var parameter in blackboardParameters)
-                parameter?.ApplyTo(blackboard);
+                parameter?.ApplyTo(parameters);
         }
 
         public bool EnsureBlackboardParameterMetadata()

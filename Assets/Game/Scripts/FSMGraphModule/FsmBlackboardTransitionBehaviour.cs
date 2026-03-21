@@ -73,18 +73,18 @@ namespace FSMModule.Graph
             set => floatValue = value;
         }
 
-        public bool Evaluate(Blackboard blackboard, FsmGraphAsset graph)
+        public bool Evaluate(FsmParameters parameters, FsmGraphAsset graph)
         {
-            if (blackboard == null || !TryResolveParameter(graph, out var parameter))
+            if (parameters == null || !TryResolveParameter(graph, out var parameter))
                 return false;
 
             var resolvedKey = parameter.Key;
 
             return parameterType switch
             {
-                BlackboardParameterType.Bool => blackboard.TryGetValue(resolvedKey, out bool boolResult) && boolResult == boolValue,
-                BlackboardParameterType.Int => blackboard.TryGetValue(resolvedKey, out int intResult) && CompareNumeric(intResult, intValue),
-                BlackboardParameterType.Float => blackboard.TryGetValue(resolvedKey, out float floatResult) && CompareNumeric(floatResult, floatValue),
+                BlackboardParameterType.Bool => parameters.TryGetBool(resolvedKey, out var boolResult) && boolResult == boolValue,
+                BlackboardParameterType.Int => parameters.TryGetInt(resolvedKey, out var intResult) && CompareNumeric(intResult, intValue),
+                BlackboardParameterType.Float => parameters.TryGetFloat(resolvedKey, out var floatResult) && CompareNumeric(floatResult, floatValue),
                 _ => false,
             };
         }
@@ -156,7 +156,7 @@ namespace FSMModule.Graph
                 for (var i = 0; i < conditions.Count; i++)
                 {
                     var condition = conditions[i];
-                    if (condition == null || !condition.Evaluate(Blackboard, Graph))
+                    if (condition == null || !condition.Evaluate(Parameters, Graph))
                         return false;
                 }
 
@@ -166,7 +166,7 @@ namespace FSMModule.Graph
             for (var i = 0; i < conditions.Count; i++)
             {
                 var condition = conditions[i];
-                if (condition != null && condition.Evaluate(Blackboard, Graph))
+                if (condition != null && condition.Evaluate(Parameters, Graph))
                     return true;
             }
 

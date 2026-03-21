@@ -58,21 +58,24 @@ namespace FSMModule.Graph
             return true;
         }
 
-        public void ApplyTo(Blackboard blackboard)
+        public void ApplyTo(FsmParameters parameters)
         {
-            if (blackboard == null || string.IsNullOrWhiteSpace(key))
+            if (parameters == null || string.IsNullOrWhiteSpace(key))
                 return;
 
             switch (type)
             {
                 case BlackboardParameterType.Bool:
-                    blackboard.SetValue(key, boolValue);
+                    parameters.RegisterBool(key);
+                    parameters.SetBool(key, boolValue);
                     break;
                 case BlackboardParameterType.Int:
-                    blackboard.SetValue(key, intValue);
+                    parameters.RegisterInt(key);
+                    parameters.SetInt(key, intValue);
                     break;
                 case BlackboardParameterType.Float:
-                    blackboard.SetValue(key, floatValue);
+                    parameters.RegisterFloat(key);
+                    parameters.SetFloat(key, floatValue);
                     break;
             }
         }

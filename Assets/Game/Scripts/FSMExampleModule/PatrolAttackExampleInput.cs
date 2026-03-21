@@ -18,7 +18,7 @@ namespace FSMModule.Examples
 
         private void Update()
         {
-            if (runner == null || runner.RuntimeContext == null)
+            if (runner == null || !runner.IsInitialized)
                 return;
 
             if (Input.GetKeyDown(toggleAttackKey))
@@ -31,10 +31,8 @@ namespace FSMModule.Examples
                 SetAttackEnabled(true);
         }
 
-        private bool IsAttackEnabled() =>
-            runner.RuntimeContext.Blackboard.TryGetValue(attackKey, out bool value) && value;
+        private bool IsAttackEnabled() => runner.GetBool(attackKey);
 
-        private void SetAttackEnabled(bool value) =>
-            runner.RuntimeContext.Blackboard.SetValue(attackKey, value);
+        private void SetAttackEnabled(bool value) => runner.SetBool(attackKey, value);
     }
 }

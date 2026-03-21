@@ -19,6 +19,7 @@ namespace FSMModule.Graph.Editor
         private static readonly Color GridSecondary = new(1f, 1f, 1f, 0.08f);
         private static readonly Color StateColor = new(0.24f, 0.26f, 0.29f);
         private static readonly Color InitialStateColor = new(0.68f, 0.42f, 0.12f);
+        private static readonly Color CurrentStateColor = new(0.19f, 0.44f, 0.31f);
         private static readonly Color SelectedStateOutlineColor = new(0.97f, 0.79f, 0.30f);
         private static readonly Color TransitionColor = new(0.73f, 0.73f, 0.73f);
         private static readonly Color SelectedTransitionColor = new(0.95f, 0.72f, 0.18f);
@@ -32,6 +33,7 @@ namespace FSMModule.Graph.Editor
         private const float SelectedStateOutlineThickness = 3f;
 
         private FsmGraphAsset _graph;
+        private FsmGraphRunner _runner;
         private Vector2 _canvasPan = new(120f, 120f);
         private Vector2 _inspectorScroll;
         private string _blackboardSearch = string.Empty;
@@ -61,7 +63,7 @@ namespace FSMModule.Graph.Editor
         {
             var window = GetWindow<FsmGraphEditorWindow>("FSM Graph");
             window.minSize = new Vector2(960f, 560f);
-            window.SetGraph(graph);
+            window.SetSelectionContext(graph, null);
             window.Show();
             window.Focus();
         }
@@ -78,8 +80,8 @@ namespace FSMModule.Graph.Editor
 
         private void OnEnable()
         {
-            if (_graph == null && TryGetGraphFromSelection(out var graph))
-                SetGraph(graph);
+            if (_graph == null && TryGetSelectionContext(out var graph, out var runner))
+                SetSelectionContext(graph, runner);
         }
 
         private void OnDisable()
@@ -90,11 +92,17 @@ namespace FSMModule.Graph.Editor
 
         private void OnSelectionChange()
         {
-            if (TryGetGraphFromSelection(out var graph))
+            if (TryGetSelectionContext(out var graph, out var runner))
             {
-                SetGraph(graph);
+                SetSelectionContext(graph, runner);
                 Repaint();
             }
+        }
+
+        private void OnInspectorUpdate()
+        {
+            if (HasRuntimeRunner)
+                Repaint();
         }
 
         private void OnGUI()
@@ -122,9 +130,9 @@ namespace FSMModule.Graph.Editor
             using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar, GUILayout.Height(ToolbarHeight)))
             {
                 GUILayout.Label(
-                    _graph != null ? $"Graph: {_graph.name}" : "Select an FSM graph asset or a scene object with FsmGraphRunner",
+                    GetToolbarTitle(),
                     EditorStyles.miniLabel,
-                    GUILayout.Width(320f));
+                    GUILayout.Width(420f));
 
                 using (new EditorGUI.DisabledScope(_graph == null))
                 {
@@ -204,7 +212,12 @@ namespace FSMModule.Graph.Editor
             var nodeRect = GetNodeRect(canvasRect, state);
             var isSelected = state.Id == _selectedStateId;
             var isInitial = state.Id == _graph.InitialStateId;
-            var fillColor = isInitial ? InitialStateColor : StateColor;
+            var isCurrent = state.Id == GetRuntimeCurrentStateId();
+            var fillColor = isCurrent
+                ? CurrentStateColor
+                : isInitial
+                    ? InitialStateColor
+                    : StateColor;
 
             EditorGUI.DrawRect(nodeRect, fillColor);
             GUI.Box(nodeRect, GUIContent.none);
@@ -295,6 +308,9 @@ namespace FSMModule.Graph.Editor
             EditorGUILayout.LabelField("Graph", EditorStyles.boldLabel);
             EditorGUILayout.LabelField("Asset", _graph != null ? _graph.name : "<None>");
 
+            if (_runner != null)
+                EditorGUILayout.LabelField("Runner", _runner.name);
+
             if (_graph.States.Count == 0)
             {
                 EditorGUILayout.HelpBox("Add at least one state to make the graph runnable.", MessageType.Info);
@@ -319,6 +335,9 @@ namespace FSMModule.Graph.Editor
 
             using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
             {
+                if (HasRuntimeRunner)
+                    EditorGUILayout.HelpBox($"Showing runtime values from '{_runner.name}'.", MessageType.None);
+
                 DrawBlackboardToolbar();
 
                 var visibleParameterCount = 0;
@@ -350,13 +369,22 @@ namespace FSMModule.Graph.Editor
                     GetToolbarSearchFieldStyle(),
                     GUILayout.ExpandWidth(true));
 
-                if (GUILayout.Button("+", EditorStyles.toolbarButton, GUILayout.Width(26f)))
-                    ShowAddBlackboardParameterMenu();
+                using (new EditorGUI.DisabledScope(HasRuntimeRunner))
+                {
+                    if (GUILayout.Button("+", EditorStyles.toolbarButton, GUILayout.Width(26f)))
+                        ShowAddBlackboardParameterMenu();
+                }
             }
         }
 
         private bool DrawBlackboardParameterRow(FsmBlackboardParameterDefinition parameter, int index)
         {
+            if (HasRuntimeRunner)
+            {
+                DrawRuntimeBlackboardParameterRow(parameter);
+                return false;
+            }
+
             using (new EditorGUILayout.HorizontalScope())
             {
                 EditorGUILayout.LabelField(parameter.Type.ToString(), EditorStyles.miniLabel, GUILayout.Width(34f));
@@ -381,7 +409,7 @@ namespace FSMModule.Graph.Editor
 
                 if (GUILayout.Button("X", EditorStyles.miniButton, GUILayout.Width(22f)))
                 {
-                    RecordGraph("Remove Blackboard Parameter");
+                    RecordGraph("Remove Parameter");
                     _graph.BlackboardParameters.RemoveAt(index);
                     MarkDirty();
                     return true;
@@ -392,7 +420,7 @@ namespace FSMModule.Graph.Editor
                     updatedIntValue != parameter.IntValue ||
                     !Mathf.Approximately(updatedFloatValue, parameter.FloatValue))
                 {
-                    RecordGraph("Edit Blackboard Parameter");
+                    RecordGraph("Edit Parameter");
                     parameter.Key = updatedKey;
                     parameter.BoolValue = updatedBoolValue;
                     parameter.IntValue = updatedIntValue;
@@ -402,6 +430,29 @@ namespace FSMModule.Graph.Editor
             }
 
             return false;
+        }
+
+        private void DrawRuntimeBlackboardParameterRow(FsmBlackboardParameterDefinition parameter)
+        {
+            using (new EditorGUI.DisabledScope(true))
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUILayout.LabelField(parameter.Type.ToString(), EditorStyles.miniLabel, GUILayout.Width(34f));
+                EditorGUILayout.TextField(parameter.Key, GUILayout.ExpandWidth(true));
+
+                switch (parameter.Type)
+                {
+                    case BlackboardParameterType.Bool:
+                        EditorGUILayout.Toggle(GetRuntimeBoolValue(parameter), GUILayout.Width(18f));
+                        break;
+                    case BlackboardParameterType.Int:
+                        EditorGUILayout.IntField(GetRuntimeIntValue(parameter), GUILayout.Width(64f));
+                        break;
+                    case BlackboardParameterType.Float:
+                        EditorGUILayout.FloatField(GetRuntimeFloatValue(parameter), GUILayout.Width(64f));
+                        break;
+                }
+            }
         }
 
         private void ShowAddBlackboardParameterMenu()
@@ -415,7 +466,7 @@ namespace FSMModule.Graph.Editor
 
         private void AddBlackboardParameter(BlackboardParameterType type)
         {
-            RecordGraph("Add Blackboard Parameter");
+            RecordGraph("Add Parameter");
 
             var parameter = new FsmBlackboardParameterDefinition
             {
@@ -1212,9 +1263,10 @@ namespace FSMModule.Graph.Editor
             return mousePosition - canvasOrigin - _canvasPan;
         }
 
-        private static bool TryGetGraphFromSelection(out FsmGraphAsset graph)
+        private static bool TryGetSelectionContext(out FsmGraphAsset graph, out FsmGraphRunner runner)
         {
             graph = null;
+            runner = null;
 
             if (Selection.activeObject is FsmGraphAsset selectedGraph)
             {
@@ -1225,6 +1277,7 @@ namespace FSMModule.Graph.Editor
             if (Selection.activeObject is FsmGraphRunner selectedRunner && selectedRunner.Graph != null)
             {
                 graph = selectedRunner.Graph;
+                runner = selectedRunner;
                 return true;
             }
 
@@ -1233,6 +1286,7 @@ namespace FSMModule.Graph.Editor
                 selectedGameObjectRunner.Graph != null)
             {
                 graph = selectedGameObjectRunner.Graph;
+                runner = selectedGameObjectRunner;
                 return true;
             }
 
@@ -1241,15 +1295,17 @@ namespace FSMModule.Graph.Editor
                 selectedComponentRunner.Graph != null)
             {
                 graph = selectedComponentRunner.Graph;
+                runner = selectedComponentRunner;
                 return true;
             }
 
             return false;
         }
 
-        private void SetGraph(FsmGraphAsset graph)
+        private void SetSelectionContext(FsmGraphAsset graph, FsmGraphRunner runner)
         {
             _graph = graph;
+            _runner = runner;
 
             if (_graph != null && _graph.EnsureBlackboardParameterMetadata())
                 EditorUtility.SetDirty(_graph);
@@ -1258,6 +1314,59 @@ namespace FSMModule.Graph.Editor
             _selectedTransitionId = null;
             _pendingTransitionFromStateId = null;
             ClearEmbeddedEditor();
+        }
+
+        private bool HasRuntimeRunner =>
+            Application.isPlaying &&
+            _runner != null &&
+            _runner.Graph == _graph &&
+            _runner.IsInitialized &&
+            _runner.RuntimeContext != null;
+
+        private string GetToolbarTitle()
+        {
+            if (_graph == null)
+                return "Select an FSM graph asset or a scene object with FsmGraphRunner";
+
+            if (_runner == null)
+                return $"Graph: {_graph.name}";
+
+            return HasRuntimeRunner
+                ? $"Graph: {_graph.name} | Runner: {_runner.name} | State: {GetRuntimeCurrentStateId()}"
+                : $"Graph: {_graph.name} | Runner: {_runner.name}";
+        }
+
+        private string GetRuntimeCurrentStateId() =>
+            HasRuntimeRunner ? _runner.CurrentStateId : string.Empty;
+
+        private bool GetRuntimeBoolValue(FsmBlackboardParameterDefinition parameter)
+        {
+            if (!HasRuntimeRunner || parameter == null)
+                return parameter != null && parameter.BoolValue;
+
+            return _runner.RuntimeContext.Parameters.TryGetBool(parameter.Key, out var value)
+                ? value
+                : parameter.BoolValue;
+        }
+
+        private int GetRuntimeIntValue(FsmBlackboardParameterDefinition parameter)
+        {
+            if (!HasRuntimeRunner || parameter == null)
+                return parameter != null ? parameter.IntValue : default;
+
+            return _runner.RuntimeContext.Parameters.TryGetInt(parameter.Key, out var value)
+                ? value
+                : parameter.IntValue;
+        }
+
+        private float GetRuntimeFloatValue(FsmBlackboardParameterDefinition parameter)
+        {
+            if (!HasRuntimeRunner || parameter == null)
+                return parameter != null ? parameter.FloatValue : default;
+
+            return _runner.RuntimeContext.Parameters.TryGetFloat(parameter.Key, out var value)
+                ? value
+                : parameter.FloatValue;
         }
 
         private void RecordGraph(string actionName)
