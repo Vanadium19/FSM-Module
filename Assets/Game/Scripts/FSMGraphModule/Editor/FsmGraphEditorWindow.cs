@@ -11,28 +11,52 @@ namespace FSMModule.Graph.Editor
     {
         private const float ToolbarHeight = 24f;
         private const float InspectorWidth = 360f;
-        private const float NodeWidth = 190f;
-        private const float NodeHeight = 66f;
+        private const float NodeWidth = 248f;
+        private const float NodeHeight = 108f;
+        private const float NodeHeaderHeight = 38f;
+        private const float NodeFooterHeight = 28f;
+        private const float NodeAccentWidth = 4f;
+        private const float NodeShadowOffsetX = 2f;
+        private const float NodeShadowOffsetY = 8f;
+        private const float NodeBadgeHeight = 18f;
+        private const float NodeRuntimeGlowThickness = 6f;
 
-        private static readonly Color CanvasBackground = new(0.15f, 0.15f, 0.15f);
-        private static readonly Color GridPrimary = new(1f, 1f, 1f, 0.04f);
-        private static readonly Color GridSecondary = new(1f, 1f, 1f, 0.08f);
-        private static readonly Color StateColor = new(0.24f, 0.26f, 0.29f);
-        private static readonly Color InitialStateColor = new(0.68f, 0.42f, 0.12f);
-        private static readonly Color CurrentStateColor = new(0.19f, 0.44f, 0.31f);
-        private static readonly Color StateBorderColor = new(0f, 0f, 0f, 0.35f);
-        private static readonly Color SelectedStateOutlineColor = new(0.97f, 0.79f, 0.30f);
-        private static readonly Color TransitionColor = new(0.73f, 0.73f, 0.73f);
-        private static readonly Color SelectedTransitionColor = new(0.95f, 0.72f, 0.18f);
-        private static readonly Color PendingTransitionColor = new(0.44f, 0.80f, 0.46f);
+        private static readonly Color CanvasBackground = new(0.10f, 0.115f, 0.14f);
+        private static readonly Color GridDotColor = new(0.88f, 0.93f, 1f, 0.035f);
+        private static readonly Color GridMajorDotColor = new(0.88f, 0.95f, 1f, 0.07f);
+        private static readonly Color NodeCardColor = new(0.16f, 0.185f, 0.225f);
+        private static readonly Color NodeCardHeaderColor = new(0.19f, 0.215f, 0.26f);
+        private static readonly Color NodeCardHoverColor = new(0.19f, 0.215f, 0.255f);
+        private static readonly Color NodeCardHoverHeaderColor = new(0.22f, 0.245f, 0.29f);
+        private static readonly Color NodeBorderColor = new(0.64f, 0.72f, 0.84f, 0.18f);
+        private static readonly Color NodeDividerColor = new(0.72f, 0.80f, 0.90f, 0.12f);
+        private static readonly Color NodeShadowColor = new(0f, 0f, 0f, 0.20f);
+        private static readonly Color NodeAccentColor = new(0.45f, 0.57f, 0.74f);
+        private static readonly Color InitialAccentColor = new(0.93f, 0.56f, 0.30f);
+        private static readonly Color RuntimeGlowColor = new(0.18f, 0.72f, 1f, 0.92f);
+        private static readonly Color SelectedStateOutlineColor = new(0.26f, 0.72f, 1f, 1f);
+        private static readonly Color WarningColor = new(0.93f, 0.72f, 0.24f);
+        private static readonly Color InvalidColor = new(0.88f, 0.33f, 0.34f);
+        private static readonly Color TransitionColor = new(0.82f, 0.87f, 0.95f, 0.32f);
+        private static readonly Color HoveredTransitionColor = new(0.86f, 0.91f, 0.97f, 0.55f);
+        private static readonly Color SelectedTransitionColor = new(0.33f, 0.77f, 1f, 0.96f);
+        private static readonly Color PendingTransitionColor = new(0.30f, 0.84f, 1f, 0.88f);
+        private static readonly Color NodeTitleColor = new(0.96f, 0.97f, 0.99f);
+        private static readonly Color NodeSubtitleColor = new(0.79f, 0.83f, 0.90f);
+        private static readonly Color NodeFooterColor = new(0.69f, 0.75f, 0.84f);
         private const float TransitionLaneSpacing = 28f;
-        private const float TransitionSelectionDistance = 12f;
-        private const float TransitionArrowLength = 14f;
-        private const float TransitionArrowWidth = 10f;
-        private const float SelfTransitionLoopWidth = 44f;
-        private const float SelfTransitionLoopHeight = 18f;
-        private const float SelectedStateOutlineThickness = 3f;
-        private const float StateCornerRadius = 10f;
+        private const float TransitionSelectionDistance = 10f;
+        private const float TransitionArrowLength = 11f;
+        private const float TransitionArrowWidth = 8f;
+        private const float SelfTransitionLoopWidth = 84f;
+        private const float SelfTransitionLoopHeight = 30f;
+        private const float TransitionLabelPaddingX = 10f;
+        private const float TransitionLabelPaddingY = 5f;
+        private const float TransitionLineWidth = 2.5f;
+        private const float TransitionSelectedLineWidth = 3.5f;
+        private const float SelectedStateOutlineThickness = 2f;
+        private const float StateCornerRadius = 13f;
+        private const int TransitionCurveSampleCount = 24;
 
         private FsmGraphAsset _graph;
         private FsmGraphRunner _runner;
@@ -43,6 +67,8 @@ namespace FSMModule.Graph.Editor
         private string _selectedStateId;
         private string _selectedTransitionId;
         private string _pendingTransitionFromStateId;
+        private string _hoveredStateId;
+        private string _hoveredTransitionId;
 
         private string _draggedStateId;
         private Vector2 _dragOffset;
@@ -52,6 +78,11 @@ namespace FSMModule.Graph.Editor
 
         private UnityEditor.Editor _embeddedEditor;
         private UnityEngine.Object _embeddedEditorTarget;
+        private GUIStyle _nodeTitleStyle;
+        private GUIStyle _nodeSubtitleStyle;
+        private GUIStyle _nodeFooterStyle;
+        private GUIStyle _nodeBadgeStyle;
+        private GUIStyle _transitionLabelStyle;
 
         [MenuItem("Window/FSM/Graph Editor")]
         public static void OpenWindow()
@@ -130,6 +161,7 @@ namespace FSMModule.Graph.Editor
 
         private void OnGUI()
         {
+            EnsureStyles();
             HandleKeyboardShortcuts(Event.current);
             DrawToolbar();
 
@@ -229,8 +261,9 @@ namespace FSMModule.Graph.Editor
         private void DrawCanvas(Rect canvasRect)
         {
             EditorGUI.DrawRect(canvasRect, CanvasBackground);
-            DrawGrid(canvasRect, 20f, GridPrimary);
-            DrawGrid(canvasRect, 100f, GridSecondary);
+            UpdateHoverState(canvasRect, Event.current);
+            DrawDottedGrid(canvasRect, 24f, GridDotColor, 1.4f);
+            DrawDottedGrid(canvasRect, 96f, GridMajorDotColor, 2.1f);
 
             HandleCanvasEvents(canvasRect, Event.current);
 
@@ -242,23 +275,24 @@ namespace FSMModule.Graph.Editor
 
             if (!string.IsNullOrWhiteSpace(_pendingTransitionFromStateId))
                 DrawPendingTransition(canvasRect, _pendingTransitionFromStateId, Event.current.mousePosition);
+
+            if (_graph.FindTransition(_selectedTransitionId) is { } selectedTransition)
+                DrawSelectedTransitionOverlay(canvasRect, selectedTransition);
         }
 
-        private void DrawGrid(Rect canvasRect, float spacing, Color color)
+        private void DrawDottedGrid(Rect canvasRect, float spacing, Color color, float dotSize)
         {
-            Handles.BeginGUI();
-            Handles.color = color;
-
             var startX = canvasRect.x + (_canvasPan.x % spacing);
-            for (var x = startX; x < canvasRect.xMax; x += spacing)
-                Handles.DrawLine(new Vector3(x, canvasRect.y, 0f), new Vector3(x, canvasRect.yMax, 0f));
-
             var startY = canvasRect.y + (_canvasPan.y % spacing);
-            for (var y = startY; y < canvasRect.yMax; y += spacing)
-                Handles.DrawLine(new Vector3(canvasRect.x, y, 0f), new Vector3(canvasRect.xMax, y, 0f));
+            var halfDot = dotSize * 0.5f;
 
-            Handles.color = Color.white;
-            Handles.EndGUI();
+            for (var x = startX; x < canvasRect.xMax; x += spacing)
+            {
+                for (var y = startY; y < canvasRect.yMax; y += spacing)
+                {
+                    EditorGUI.DrawRect(new Rect(x - halfDot, y - halfDot, dotSize, dotSize), color);
+                }
+            }
         }
 
         private void DrawStateNode(Rect canvasRect, FsmGraphStateNode state)
@@ -268,27 +302,62 @@ namespace FSMModule.Graph.Editor
 
             var nodeRect = GetNodeRect(canvasRect, state);
             var isSelected = state.Id == _selectedStateId;
+            var isHovered = state.Id == _hoveredStateId;
             var isInitial = state.Id == _graph.InitialStateId;
             var isCurrent = state.Id == GetRuntimeCurrentStateId();
-            var fillColor = isCurrent
-                ? CurrentStateColor
-                : isInitial
-                    ? InitialStateColor
-                    : StateColor;
+            var outgoingTransitionCount = GetOutgoingTransitionCount(state.Id);
+            var isInvalid = state.State == null;
+            var isWarning = !isInvalid && outgoingTransitionCount == 0;
+            var cardHeaderColor = isHovered ? NodeCardHoverHeaderColor : NodeCardHeaderColor;
+            var cardBodyColor = isHovered ? NodeCardHoverColor : NodeCardColor;
+            var accentColor = isInvalid
+                ? InvalidColor
+                : isCurrent
+                    ? RuntimeGlowColor
+                    : isInitial
+                        ? InitialAccentColor
+                        : NodeAccentColor;
+            var borderColor = isInvalid
+                ? new Color(InvalidColor.r, InvalidColor.g, InvalidColor.b, 0.7f)
+                : isWarning
+                    ? new Color(WarningColor.r, WarningColor.g, WarningColor.b, 0.34f)
+                    : new Color(NodeBorderColor.r, NodeBorderColor.g, NodeBorderColor.b, isHovered ? 0.30f : NodeBorderColor.a);
 
-            DrawRoundedRect(nodeRect, fillColor, StateBorderColor, StateCornerRadius);
+            DrawStateShadow(nodeRect);
+
+            if (isCurrent)
+                DrawStateRuntimeGlow(nodeRect);
+
+            DrawRoundedRect(nodeRect, cardBodyColor, borderColor, StateCornerRadius);
+
+            var headerRect = new Rect(nodeRect.x + 1f, nodeRect.y + 1f, nodeRect.width - 2f, NodeHeaderHeight + 10f);
+            DrawRoundedRect(headerRect, cardHeaderColor, Color.clear, StateCornerRadius - 1f);
+            EditorGUI.DrawRect(
+                new Rect(nodeRect.x + 1f, nodeRect.y + NodeHeaderHeight - 1f, nodeRect.width - 2f, 1f),
+                NodeDividerColor);
+
+            var accentRect = new Rect(nodeRect.x + 11f, nodeRect.y + 10f, NodeAccentWidth, nodeRect.height - 20f);
+            DrawRoundedRect(accentRect, accentColor, Color.clear, NodeAccentWidth * 0.5f);
 
             if (isSelected)
                 DrawStateSelectionOutline(nodeRect);
 
-            var nameRect = new Rect(nodeRect.x + 12f, nodeRect.y + 8f, nodeRect.width - 24f, 18f);
-            var typeRect = new Rect(nodeRect.x + 12f, nodeRect.y + 33f, nodeRect.width - 24f, 16f);
+            var titleRect = new Rect(nodeRect.x + 26f, nodeRect.y + 9f, nodeRect.width - 82f, 22f);
+            var typeRect = new Rect(nodeRect.x + 26f, nodeRect.y + NodeHeaderHeight + 11f, nodeRect.width - 38f, 18f);
+            var footerRect = new Rect(nodeRect.x + 26f, nodeRect.yMax - NodeFooterHeight + 4f, nodeRect.width - 38f, 16f);
 
-            EditorGUI.LabelField(nameRect, state.Name, EditorStyles.boldLabel);
-            EditorGUI.LabelField(
+            GUI.Label(titleRect, state.Name, _nodeTitleStyle);
+            GUI.Label(
                 typeRect,
                 state.State != null ? state.State.GetType().Name : "No State Behaviour",
-                EditorStyles.miniLabel);
+                _nodeSubtitleStyle);
+            GUI.Label(
+                footerRect,
+                GetStateFooterText(outgoingTransitionCount),
+                _nodeFooterStyle);
+
+            if (TryGetStateBadge(state, outgoingTransitionCount, isInvalid, out var badgeText, out var badgeColor))
+                DrawNodeBadge(nodeRect, badgeText, badgeColor);
         }
 
         private static void DrawStateSelectionOutline(Rect nodeRect)
@@ -296,6 +365,32 @@ namespace FSMModule.Graph.Editor
             Handles.BeginGUI();
             Handles.color = SelectedStateOutlineColor;
             DrawRoundedOutline(nodeRect, StateCornerRadius, SelectedStateOutlineThickness);
+            Handles.color = Color.white;
+            Handles.EndGUI();
+        }
+
+        private static void DrawStateShadow(Rect nodeRect)
+        {
+            var shadowRect = new Rect(
+                nodeRect.x + NodeShadowOffsetX,
+                nodeRect.y + NodeShadowOffsetY,
+                nodeRect.width,
+                nodeRect.height);
+            DrawRoundedRect(shadowRect, NodeShadowColor, Color.clear, StateCornerRadius + 1f);
+        }
+
+        private static void DrawStateRuntimeGlow(Rect nodeRect)
+        {
+            Handles.BeginGUI();
+
+            for (var i = 0; i < 3; i++)
+            {
+                var glowRect = ExpandRect(nodeRect, 3f + (i * 2f));
+                var glowColor = new Color(RuntimeGlowColor.r, RuntimeGlowColor.g, RuntimeGlowColor.b, 0.18f - (i * 0.045f));
+                Handles.color = glowColor;
+                DrawRoundedOutline(glowRect, StateCornerRadius + (i * 1.5f), Mathf.Max(1f, NodeRuntimeGlowThickness - i));
+            }
+
             Handles.color = Color.white;
             Handles.EndGUI();
         }
@@ -317,6 +412,24 @@ namespace FSMModule.Graph.Editor
         {
             var points = BuildRoundedRectPoints(rect, radius, true);
             Handles.DrawAAPolyLine(thickness, points);
+        }
+
+        private void DrawNodeBadge(Rect nodeRect, string badgeText, Color badgeColor)
+        {
+            if (string.IsNullOrWhiteSpace(badgeText))
+                return;
+
+            var content = new GUIContent(badgeText);
+            var textSize = _nodeBadgeStyle.CalcSize(content);
+            var badgeWidth = Mathf.Max(46f, textSize.x + 14f);
+            var badgeRect = new Rect(
+                nodeRect.xMax - badgeWidth - 12f,
+                nodeRect.y + 10f,
+                badgeWidth,
+                NodeBadgeHeight);
+
+            DrawRoundedRect(badgeRect, badgeColor, Color.clear, 8f);
+            GUI.Label(badgeRect, content, _nodeBadgeStyle);
         }
 
         private static Vector3[] BuildRoundedRectPoints(Rect rect, float radius, bool closedLoop)
@@ -388,14 +501,29 @@ namespace FSMModule.Graph.Editor
                 return;
 
             var visual = GetTransitionVisualData(canvasRect, transition, fromState, toState);
-            var color = transition.Id == _selectedTransitionId ? SelectedTransitionColor : TransitionColor;
+            var isSelected = transition.Id == _selectedTransitionId;
+            var isHovered = transition.Id == _hoveredTransitionId;
+            var color = isSelected
+                ? SelectedTransitionColor
+                : isHovered
+                    ? HoveredTransitionColor
+                    : TransitionColor;
+            var lineWidth = isSelected ? TransitionSelectedLineWidth : TransitionLineWidth;
 
             Handles.BeginGUI();
             Handles.color = color;
-            DrawTransitionPolyline(visual.Points);
+            Handles.DrawBezier(
+                visual.StartPoint,
+                visual.EndPoint,
+                visual.StartTangent,
+                visual.EndTangent,
+                color,
+                null,
+                lineWidth);
             DrawTransitionArrow(visual.ArrowTip, visual.ArrowDirection);
             Handles.color = Color.white;
             Handles.EndGUI();
+
         }
 
         private void DrawPendingTransition(Rect canvasRect, string fromStateId, Vector2 mousePosition)
@@ -406,12 +534,34 @@ namespace FSMModule.Graph.Editor
 
             var startRect = GetNodeRect(canvasRect, fromState);
             var start = GetRectEdgePoint(startRect, mousePosition - startRect.center);
+            var direction = (mousePosition - start).normalized;
+            if (direction.sqrMagnitude <= Mathf.Epsilon)
+                direction = Vector2.right;
+
+            var distance = Vector2.Distance(start, mousePosition);
+            var tangentDistance = Mathf.Clamp(distance * 0.35f, 50f, 150f);
+            var startTangent = start + direction * tangentDistance;
+            var endTangent = mousePosition - direction * tangentDistance;
 
             Handles.BeginGUI();
             Handles.color = PendingTransitionColor;
-            Handles.DrawAAPolyLine(3f, start, mousePosition);
+            Handles.DrawBezier(start, mousePosition, startTangent, endTangent, PendingTransitionColor, null, TransitionSelectedLineWidth);
             Handles.color = Color.white;
             Handles.EndGUI();
+        }
+
+        private void DrawSelectedTransitionOverlay(Rect canvasRect, FsmGraphTransition transition)
+        {
+            if (transition == null)
+                return;
+
+            var fromState = _graph.FindState(transition.FromStateId);
+            var toState = _graph.FindState(transition.ToStateId);
+            if (fromState == null || toState == null)
+                return;
+
+            var visual = GetTransitionVisualData(canvasRect, transition, fromState, toState);
+            DrawSelectedTransitionLabel(visual.LabelPosition, GetTransitionCanvasLabel(transition));
         }
 
         private void DrawInspector(Rect inspectorRect)
@@ -1168,19 +1318,32 @@ namespace FSMModule.Graph.Editor
             var fromRect = GetNodeRect(canvasRect, fromState);
             var toRect = GetNodeRect(canvasRect, toState);
 
+            var startTangent = default(Vector2);
+            var endTangent = default(Vector2);
+            var labelPosition = default(Vector2);
+            var arrowTip = default(Vector2);
+            var arrowTail = default(Vector2);
+
             if (transition.FromStateId == transition.ToStateId)
             {
                 var loopOffset = GetSelfTransitionLoopOffset(transition);
-                var start = new Vector2(fromRect.xMax, fromRect.center.y - SelfTransitionLoopHeight);
-                var cornerTop = new Vector2(fromRect.xMax + SelfTransitionLoopWidth + loopOffset, fromRect.center.y - SelfTransitionLoopHeight);
-                var cornerBottom = new Vector2(fromRect.xMax + SelfTransitionLoopWidth + loopOffset, fromRect.center.y + SelfTransitionLoopHeight);
-                var end = new Vector2(fromRect.xMax, fromRect.center.y + SelfTransitionLoopHeight);
-                var arrowTip = Vector2.Lerp(cornerTop, cornerBottom, 0.5f);
+                var start = new Vector2(fromRect.xMax - 8f, fromRect.center.y - (SelfTransitionLoopHeight * 0.65f));
+                var end = new Vector2(fromRect.xMax - 8f, fromRect.center.y + (SelfTransitionLoopHeight * 0.65f));
+                startTangent = start + new Vector2(SelfTransitionLoopWidth + loopOffset, -SelfTransitionLoopHeight);
+                endTangent = end + new Vector2(SelfTransitionLoopWidth + loopOffset, SelfTransitionLoopHeight);
+                labelPosition = EvaluateBezier(start, end, startTangent, endTangent, 0.45f);
+                arrowTip = EvaluateBezier(start, end, startTangent, endTangent, 0.84f);
+                arrowTail = EvaluateBezier(start, end, startTangent, endTangent, 0.77f);
 
                 return new TransitionVisualData(
-                    new[] { start, cornerTop, cornerBottom, end },
+                    start,
+                    end,
+                    startTangent,
+                    endTangent,
+                    BuildBezierSamples(start, end, startTangent, endTangent),
+                    labelPosition,
                     arrowTip,
-                    (cornerBottom - cornerTop).normalized);
+                    (arrowTip - arrowTail).normalized);
             }
 
             var direction = toRect.center - fromRect.center;
@@ -1190,15 +1353,30 @@ namespace FSMModule.Graph.Editor
             direction.Normalize();
 
             var offset = GetTransitionLaneOffset(transition);
-            var startPoint = GetRectEdgePoint(fromRect, fromRect.center + offset, direction);
-            var endPoint = GetRectEdgePoint(toRect, toRect.center + offset, -direction);
-            var arrowDirection = endPoint - startPoint;
+            var startLinePoint = fromRect.center + offset;
+            var endLinePoint = toRect.center + offset;
+            var startPoint = GetRectEdgePoint(fromRect, startLinePoint, endLinePoint - startLinePoint);
+            var endPoint = GetRectEdgePoint(toRect, endLinePoint, startLinePoint - endLinePoint);
+            var distance = Vector2.Distance(startPoint, endPoint);
+            var tangentDistance = Mathf.Clamp(distance * 0.42f, 55f, 170f);
+            var controlOffset = offset * 0.45f;
+            startTangent = startPoint + (direction * tangentDistance) + controlOffset;
+            endTangent = endPoint - (direction * tangentDistance) + controlOffset;
+            labelPosition = EvaluateBezier(startPoint, endPoint, startTangent, endTangent, 0.5f);
+            arrowTip = EvaluateBezier(startPoint, endPoint, startTangent, endTangent, 0.92f);
+            arrowTail = EvaluateBezier(startPoint, endPoint, startTangent, endTangent, 0.84f);
+            var arrowDirection = arrowTip - arrowTail;
             if (arrowDirection.sqrMagnitude <= Mathf.Epsilon)
                 arrowDirection = direction;
 
             return new TransitionVisualData(
-                new[] { startPoint, endPoint },
-                Vector2.Lerp(startPoint, endPoint, 0.5f),
+                startPoint,
+                endPoint,
+                startTangent,
+                endTangent,
+                BuildBezierSamples(startPoint, endPoint, startTangent, endTangent),
+                labelPosition,
+                arrowTip,
                 arrowDirection.normalized);
         }
 
@@ -1372,13 +1550,13 @@ namespace FSMModule.Graph.Editor
             return closestDistance;
         }
 
-        private static void DrawTransitionPolyline(IReadOnlyList<Vector2> points)
+        private static Vector2[] BuildBezierSamples(Vector2 start, Vector2 end, Vector2 startTangent, Vector2 endTangent)
         {
-            if (points == null || points.Count < 2)
-                return;
+            var points = new Vector2[TransitionCurveSampleCount + 1];
+            for (var i = 0; i <= TransitionCurveSampleCount; i++)
+                points[i] = EvaluateBezier(start, end, startTangent, endTangent, i / (float)TransitionCurveSampleCount);
 
-            for (var i = 0; i < points.Count - 1; i++)
-                Handles.DrawAAPolyLine(3f, points[i], points[i + 1]);
+            return points;
         }
 
         private static float DistancePointToSegment(Vector2 point, Vector2 start, Vector2 end)
@@ -1391,6 +1569,16 @@ namespace FSMModule.Graph.Editor
             var t = Mathf.Clamp01(Vector2.Dot(point - start, segment) / lengthSquared);
             var projection = start + segment * t;
             return Vector2.Distance(point, projection);
+        }
+
+        private static Vector2 EvaluateBezier(Vector2 start, Vector2 end, Vector2 startTangent, Vector2 endTangent, float t)
+        {
+            var invT = 1f - t;
+            return
+                (invT * invT * invT * start) +
+                (3f * invT * invT * t * startTangent) +
+                (3f * invT * t * t * endTangent) +
+                (t * t * t * end);
         }
 
         private static void DrawTransitionArrow(Vector2 arrowTip, Vector2 arrowDirection)
@@ -1408,19 +1596,182 @@ namespace FSMModule.Graph.Editor
             Handles.DrawAAConvexPolygon(arrowTip, leftPoint, rightPoint);
         }
 
+        private void DrawSelectedTransitionLabel(Vector2 position, string label)
+        {
+            if (string.IsNullOrWhiteSpace(label))
+                return;
+
+            var content = new GUIContent(label);
+            var textSize = _transitionLabelStyle.CalcSize(content);
+            var labelRect = new Rect(
+                position.x - (textSize.x * 0.5f) - TransitionLabelPaddingX,
+                position.y - (textSize.y * 0.5f) - TransitionLabelPaddingY,
+                textSize.x + (TransitionLabelPaddingX * 2f),
+                textSize.y + (TransitionLabelPaddingY * 2f));
+
+            DrawRoundedRect(labelRect, new Color(0.12f, 0.15f, 0.20f, 0.96f), new Color(0.38f, 0.65f, 0.90f, 0.35f), 9f);
+            GUI.Label(labelRect, content, _transitionLabelStyle);
+        }
+
+        private string GetTransitionCanvasLabel(FsmGraphTransition transition)
+        {
+            if (transition?.Transition == null)
+                return "Missing transition settings";
+
+            if (transition.Transition is FsmBlackboardTransitionBehaviour blackboardTransition)
+            {
+                var conditionCount = blackboardTransition.Conditions.Count;
+                var conditionLabel = conditionCount == 1 ? "condition" : "conditions";
+                return $"{blackboardTransition.ConditionMode} · {conditionCount} {conditionLabel}";
+            }
+
+            return transition.Transition.GetType().Name;
+        }
+
+        private int GetOutgoingTransitionCount(string stateId) =>
+            _graph.Transitions.Count(transition => transition != null && transition.FromStateId == stateId);
+
+        private string GetStateFooterText(int transitionCount)
+        {
+            var transitionLabel = transitionCount == 1 ? "transition" : "transitions";
+            return $"{transitionCount} {transitionLabel}";
+        }
+
+        private bool TryGetStateBadge(
+            FsmGraphStateNode state,
+            int outgoingTransitionCount,
+            bool isInvalid,
+            out string badgeText,
+            out Color badgeColor)
+        {
+            badgeText = null;
+            badgeColor = Color.clear;
+
+            if (isInvalid)
+            {
+                badgeText = "Invalid";
+                badgeColor = InvalidColor;
+                return true;
+            }
+
+            if (outgoingTransitionCount == 0)
+            {
+                badgeText = "No Exit";
+                badgeColor = WarningColor;
+                return true;
+            }
+
+            if (_graph.InitialStateId == state.Id)
+            {
+                badgeText = "Default";
+                badgeColor = InitialAccentColor;
+                return true;
+            }
+
+            return false;
+        }
+
+        private void UpdateHoverState(Rect canvasRect, Event currentEvent)
+        {
+            string hoveredStateId = null;
+            string hoveredTransitionId = null;
+
+            if (currentEvent != null && canvasRect.Contains(currentEvent.mousePosition))
+            {
+                var hoveredState = FindStateAt(canvasRect, currentEvent.mousePosition);
+                hoveredStateId = hoveredState?.Id;
+
+                if (hoveredState == null)
+                    hoveredTransitionId = FindTransitionAt(canvasRect, currentEvent.mousePosition)?.Id;
+            }
+
+            if (_hoveredStateId == hoveredStateId && _hoveredTransitionId == hoveredTransitionId)
+                return;
+
+            _hoveredStateId = hoveredStateId;
+            _hoveredTransitionId = hoveredTransitionId;
+            GUI.changed = true;
+        }
+
+        private void EnsureStyles()
+        {
+            if (_nodeTitleStyle != null)
+                return;
+
+            _nodeTitleStyle = new GUIStyle(EditorStyles.boldLabel)
+            {
+                fontSize = 15,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleLeft,
+                clipping = TextClipping.Clip,
+            };
+            _nodeTitleStyle.normal.textColor = NodeTitleColor;
+
+            _nodeSubtitleStyle = new GUIStyle(EditorStyles.label)
+            {
+                fontSize = 12,
+                alignment = TextAnchor.MiddleLeft,
+                clipping = TextClipping.Clip,
+            };
+            _nodeSubtitleStyle.normal.textColor = NodeSubtitleColor;
+
+            _nodeFooterStyle = new GUIStyle(EditorStyles.miniLabel)
+            {
+                fontSize = 11,
+                alignment = TextAnchor.MiddleLeft,
+                clipping = TextClipping.Clip,
+            };
+            _nodeFooterStyle.normal.textColor = NodeFooterColor;
+
+            _nodeBadgeStyle = new GUIStyle(EditorStyles.miniBoldLabel)
+            {
+                fontSize = 10,
+                alignment = TextAnchor.MiddleCenter,
+                clipping = TextClipping.Clip,
+                padding = new RectOffset(6, 6, 2, 1),
+            };
+            _nodeBadgeStyle.normal.textColor = Color.white;
+
+            _transitionLabelStyle = new GUIStyle(EditorStyles.miniBoldLabel)
+            {
+                fontSize = 11,
+                alignment = TextAnchor.MiddleCenter,
+                clipping = TextClipping.Clip,
+            };
+            _transitionLabelStyle.normal.textColor = NodeTitleColor;
+        }
+
+        private static Rect ExpandRect(Rect rect, float amount) =>
+            new(rect.x - amount, rect.y - amount, rect.width + (amount * 2f), rect.height + (amount * 2f));
+
         private readonly struct TransitionVisualData
         {
             public TransitionVisualData(
+                Vector2 startPoint,
+                Vector2 endPoint,
+                Vector2 startTangent,
+                Vector2 endTangent,
                 Vector2[] points,
+                Vector2 labelPosition,
                 Vector2 arrowTip,
                 Vector2 arrowDirection)
             {
+                StartPoint = startPoint;
+                EndPoint = endPoint;
+                StartTangent = startTangent;
+                EndTangent = endTangent;
                 Points = points;
+                LabelPosition = labelPosition;
                 ArrowTip = arrowTip;
                 ArrowDirection = arrowDirection;
             }
 
+            public Vector2 StartPoint { get; }
+            public Vector2 EndPoint { get; }
+            public Vector2 StartTangent { get; }
+            public Vector2 EndTangent { get; }
             public Vector2[] Points { get; }
+            public Vector2 LabelPosition { get; }
             public Vector2 ArrowTip { get; }
             public Vector2 ArrowDirection { get; }
         }
@@ -1481,6 +1832,8 @@ namespace FSMModule.Graph.Editor
             _selectedStateId = null;
             _selectedTransitionId = null;
             _pendingTransitionFromStateId = null;
+            _hoveredStateId = null;
+            _hoveredTransitionId = null;
             ClearEmbeddedEditor();
         }
 
