@@ -6,8 +6,10 @@ namespace FSMModule.Examples
     [AddComponentMenu("FSM Examples/Patrol Attack Example Input")]
     public sealed class PatrolAttackExampleInput : MonoBehaviour
     {
+        private const string DefaultAttackKey = "ShouldAttack";
+
         [SerializeField] private FsmGraphRunner runner;
-        [SerializeField] private string attackKey = PatrolAttackExampleKeys.ShouldAttack;
+        [SerializeField] private string attackKey = DefaultAttackKey;
         [SerializeField] private KeyCode toggleAttackKey = KeyCode.Space;
         [SerializeField] private KeyCode forcePatrolKey = KeyCode.Alpha1;
         [SerializeField] private KeyCode forceAttackKey = KeyCode.Alpha2;

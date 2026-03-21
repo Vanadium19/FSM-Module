@@ -10,7 +10,6 @@ namespace FSMModule.Graph
     {
         [SerializeField] private string initialStateId;
         [SerializeField] private List<FsmBlackboardParameterDefinition> blackboardParameters = new();
-        [SerializeField] private List<FsmBindingDefinition> bindingDefinitions = new();
         [SerializeField] private List<FsmGraphStateNode> states = new();
         [SerializeField] private List<FsmGraphTransition> transitions = new();
 
@@ -21,7 +20,6 @@ namespace FSMModule.Graph
         }
 
         public List<FsmBlackboardParameterDefinition> BlackboardParameters => blackboardParameters;
-        public List<FsmBindingDefinition> BindingDefinitions => bindingDefinitions;
         public List<FsmGraphStateNode> States => states;
         public List<FsmGraphTransition> Transitions => transitions;
 

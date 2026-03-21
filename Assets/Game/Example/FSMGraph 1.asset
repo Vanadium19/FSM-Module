@@ -20,11 +20,6 @@ MonoBehaviour:
     boolValue: 0
     intValue: 0
     floatValue: 3.5
-  bindingDefinitions:
-  - key: PatrolPointA
-    description: 
-  - key: PatrolPointB
-    description: 
   states:
   - id: 373939d3efd345fe9bcaea6716a1c735
     name: State 1
