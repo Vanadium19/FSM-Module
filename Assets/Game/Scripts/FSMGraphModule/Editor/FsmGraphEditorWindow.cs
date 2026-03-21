@@ -11,8 +11,8 @@ namespace FSMModule.Graph.Editor
     {
         private const float ToolbarHeight = 24f;
         private const float InspectorWidth = 360f;
-        private const float NodeWidth = 220f;
-        private const float NodeHeight = 84f;
+        private const float NodeWidth = 190f;
+        private const float NodeHeight = 66f;
 
         private static readonly Color CanvasBackground = new(0.15f, 0.15f, 0.15f);
         private static readonly Color GridPrimary = new(1f, 1f, 1f, 0.04f);
@@ -20,6 +20,7 @@ namespace FSMModule.Graph.Editor
         private static readonly Color StateColor = new(0.24f, 0.26f, 0.29f);
         private static readonly Color InitialStateColor = new(0.68f, 0.42f, 0.12f);
         private static readonly Color CurrentStateColor = new(0.19f, 0.44f, 0.31f);
+        private static readonly Color StateBorderColor = new(0f, 0f, 0f, 0.35f);
         private static readonly Color SelectedStateOutlineColor = new(0.97f, 0.79f, 0.30f);
         private static readonly Color TransitionColor = new(0.73f, 0.73f, 0.73f);
         private static readonly Color SelectedTransitionColor = new(0.95f, 0.72f, 0.18f);
@@ -31,6 +32,7 @@ namespace FSMModule.Graph.Editor
         private const float SelfTransitionLoopWidth = 44f;
         private const float SelfTransitionLoopHeight = 18f;
         private const float SelectedStateOutlineThickness = 3f;
+        private const float StateCornerRadius = 10f;
 
         private FsmGraphAsset _graph;
         private FsmGraphRunner _runner;
@@ -258,14 +260,13 @@ namespace FSMModule.Graph.Editor
                     ? InitialStateColor
                     : StateColor;
 
-            EditorGUI.DrawRect(nodeRect, fillColor);
-            GUI.Box(nodeRect, GUIContent.none);
+            DrawRoundedRect(nodeRect, fillColor, StateBorderColor, StateCornerRadius);
 
             if (isSelected)
                 DrawStateSelectionOutline(nodeRect);
 
-            var nameRect = new Rect(nodeRect.x + 10f, nodeRect.y + 8f, nodeRect.width - 20f, 20f);
-            var typeRect = new Rect(nodeRect.x + 10f, nodeRect.y + 38f, nodeRect.width - 20f, 18f);
+            var nameRect = new Rect(nodeRect.x + 12f, nodeRect.y + 8f, nodeRect.width - 24f, 18f);
+            var typeRect = new Rect(nodeRect.x + 12f, nodeRect.y + 33f, nodeRect.width - 24f, 16f);
 
             EditorGUI.LabelField(nameRect, state.Name, EditorStyles.boldLabel);
             EditorGUI.LabelField(
@@ -276,16 +277,88 @@ namespace FSMModule.Graph.Editor
 
         private static void DrawStateSelectionOutline(Rect nodeRect)
         {
-            var topLeft = new Vector3(nodeRect.xMin, nodeRect.yMin);
-            var topRight = new Vector3(nodeRect.xMax, nodeRect.yMin);
-            var bottomRight = new Vector3(nodeRect.xMax, nodeRect.yMax);
-            var bottomLeft = new Vector3(nodeRect.xMin, nodeRect.yMax);
-
             Handles.BeginGUI();
             Handles.color = SelectedStateOutlineColor;
-            Handles.DrawAAPolyLine(SelectedStateOutlineThickness, topLeft, topRight, bottomRight, bottomLeft, topLeft);
+            DrawRoundedOutline(nodeRect, StateCornerRadius, SelectedStateOutlineThickness);
             Handles.color = Color.white;
             Handles.EndGUI();
+        }
+
+        private static void DrawRoundedRect(Rect rect, Color fillColor, Color borderColor, float radius)
+        {
+            var fillPoints = BuildRoundedRectPoints(rect, radius, false);
+
+            Handles.BeginGUI();
+            Handles.color = fillColor;
+            Handles.DrawAAConvexPolygon(fillPoints);
+            Handles.color = borderColor;
+            DrawRoundedOutline(rect, radius, 1.5f);
+            Handles.color = Color.white;
+            Handles.EndGUI();
+        }
+
+        private static void DrawRoundedOutline(Rect rect, float radius, float thickness)
+        {
+            var points = BuildRoundedRectPoints(rect, radius, true);
+            Handles.DrawAAPolyLine(thickness, points);
+        }
+
+        private static Vector3[] BuildRoundedRectPoints(Rect rect, float radius, bool closedLoop)
+        {
+            radius = Mathf.Min(radius, rect.width * 0.5f, rect.height * 0.5f);
+
+            if (radius <= 0f)
+            {
+                var sharpPoints = new[]
+                {
+                    new Vector3(rect.xMin, rect.yMin),
+                    new Vector3(rect.xMax, rect.yMin),
+                    new Vector3(rect.xMax, rect.yMax),
+                    new Vector3(rect.xMin, rect.yMax),
+                };
+
+                if (!closedLoop)
+                    return sharpPoints;
+
+                return new[]
+                {
+                    sharpPoints[0],
+                    sharpPoints[1],
+                    sharpPoints[2],
+                    sharpPoints[3],
+                    sharpPoints[0],
+                };
+            }
+
+            var points = new List<Vector3>(21);
+            AddRoundedCorner(points, new Vector2(rect.xMin + radius, rect.yMin + radius), radius, 180f, 270f, false);
+            AddRoundedCorner(points, new Vector2(rect.xMax - radius, rect.yMin + radius), radius, 270f, 360f, true);
+            AddRoundedCorner(points, new Vector2(rect.xMax - radius, rect.yMax - radius), radius, 0f, 90f, true);
+            AddRoundedCorner(points, new Vector2(rect.xMin + radius, rect.yMax - radius), radius, 90f, 180f, true);
+
+            if (closedLoop)
+                points.Add(points[0]);
+
+            return points.ToArray();
+        }
+
+        private static void AddRoundedCorner(
+            List<Vector3> points,
+            Vector2 center,
+            float radius,
+            float startAngle,
+            float endAngle,
+            bool skipFirstPoint)
+        {
+            const int segments = 6;
+            for (var i = skipFirstPoint ? 1 : 0; i <= segments; i++)
+            {
+                var t = i / (float)segments;
+                var angle = Mathf.Lerp(startAngle, endAngle, t) * Mathf.Deg2Rad;
+                points.Add(new Vector3(
+                    center.x + Mathf.Cos(angle) * radius,
+                    center.y + Mathf.Sin(angle) * radius));
+            }
         }
 
         private void DrawTransition(Rect canvasRect, FsmGraphTransition transition)
