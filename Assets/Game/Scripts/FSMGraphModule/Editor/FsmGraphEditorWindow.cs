@@ -18,7 +18,8 @@ namespace FSMModule.Graph.Editor
         private static readonly Color GridPrimary = new(1f, 1f, 1f, 0.04f);
         private static readonly Color GridSecondary = new(1f, 1f, 1f, 0.08f);
         private static readonly Color StateColor = new(0.24f, 0.26f, 0.29f);
-        private static readonly Color SelectedStateColor = new(0.83f, 0.55f, 0.21f);
+        private static readonly Color InitialStateColor = new(0.68f, 0.42f, 0.12f);
+        private static readonly Color SelectedStateOutlineColor = new(0.97f, 0.79f, 0.30f);
         private static readonly Color TransitionColor = new(0.73f, 0.73f, 0.73f);
         private static readonly Color SelectedTransitionColor = new(0.95f, 0.72f, 0.18f);
         private static readonly Color PendingTransitionColor = new(0.44f, 0.80f, 0.46f);
@@ -28,6 +29,7 @@ namespace FSMModule.Graph.Editor
         private const float TransitionArrowWidth = 10f;
         private const float SelfTransitionLoopWidth = 44f;
         private const float SelfTransitionLoopHeight = 18f;
+        private const float SelectedStateOutlineThickness = 3f;
 
         private FsmGraphAsset _graph;
         private Vector2 _canvasPan = new(120f, 120f);
@@ -214,9 +216,14 @@ namespace FSMModule.Graph.Editor
 
             var nodeRect = GetNodeRect(canvasRect, state);
             var isSelected = state.Id == _selectedStateId;
+            var isInitial = state.Id == _graph.InitialStateId;
+            var fillColor = isInitial ? InitialStateColor : StateColor;
 
-            EditorGUI.DrawRect(nodeRect, isSelected ? SelectedStateColor : StateColor);
+            EditorGUI.DrawRect(nodeRect, fillColor);
             GUI.Box(nodeRect, GUIContent.none);
+
+            if (isSelected)
+                DrawStateSelectionOutline(nodeRect);
 
             var nameRect = new Rect(nodeRect.x + 10f, nodeRect.y + 8f, nodeRect.width - 20f, 20f);
             var typeRect = new Rect(nodeRect.x + 10f, nodeRect.y + 34f, nodeRect.width - 20f, 18f);
@@ -228,6 +235,20 @@ namespace FSMModule.Graph.Editor
                 state.State != null ? state.State.GetType().Name : "No State Behaviour",
                 EditorStyles.miniLabel);
             EditorGUI.LabelField(idRect, state.Id, EditorStyles.centeredGreyMiniLabel);
+        }
+
+        private static void DrawStateSelectionOutline(Rect nodeRect)
+        {
+            var topLeft = new Vector3(nodeRect.xMin, nodeRect.yMin);
+            var topRight = new Vector3(nodeRect.xMax, nodeRect.yMin);
+            var bottomRight = new Vector3(nodeRect.xMax, nodeRect.yMax);
+            var bottomLeft = new Vector3(nodeRect.xMin, nodeRect.yMax);
+
+            Handles.BeginGUI();
+            Handles.color = SelectedStateOutlineColor;
+            Handles.DrawAAPolyLine(SelectedStateOutlineThickness, topLeft, topRight, bottomRight, bottomLeft, topLeft);
+            Handles.color = Color.white;
+            Handles.EndGUI();
         }
 
         private void DrawTransition(Rect canvasRect, FsmGraphTransition transition)
