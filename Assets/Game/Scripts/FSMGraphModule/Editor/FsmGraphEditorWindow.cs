@@ -19,7 +19,6 @@ namespace FSMModule.Graph.Editor
         private const float NodeShadowOffsetX = 2f;
         private const float NodeShadowOffsetY = 8f;
         private const float NodeBadgeHeight = 18f;
-        private const float NodeRuntimeGlowThickness = 6f;
 
         private static readonly Color CanvasBackground = new(0.10f, 0.115f, 0.14f);
         private static readonly Color GridDotColor = new(0.88f, 0.93f, 1f, 0.035f);
@@ -33,7 +32,7 @@ namespace FSMModule.Graph.Editor
         private static readonly Color NodeShadowColor = new(0f, 0f, 0f, 0.20f);
         private static readonly Color NodeAccentColor = new(0.45f, 0.57f, 0.74f);
         private static readonly Color InitialAccentColor = new(0.93f, 0.56f, 0.30f);
-        private static readonly Color RuntimeGlowColor = new(0.18f, 0.72f, 1f, 0.92f);
+        private static readonly Color RuntimeActiveColor = new(0.36f, 0.80f, 0.53f);
         private static readonly Color SelectedStateOutlineColor = new(0.26f, 0.72f, 1f, 1f);
         private static readonly Color WarningColor = new(0.93f, 0.72f, 0.24f);
         private static readonly Color InvalidColor = new(0.88f, 0.33f, 0.34f);
@@ -313,7 +312,7 @@ namespace FSMModule.Graph.Editor
             var accentColor = isInvalid
                 ? InvalidColor
                 : isCurrent
-                    ? RuntimeGlowColor
+                    ? RuntimeActiveColor
                     : isInitial
                         ? InitialAccentColor
                         : NodeAccentColor;
@@ -324,9 +323,6 @@ namespace FSMModule.Graph.Editor
                     : new Color(NodeBorderColor.r, NodeBorderColor.g, NodeBorderColor.b, isHovered ? 0.30f : NodeBorderColor.a);
 
             DrawStateShadow(nodeRect);
-
-            if (isCurrent)
-                DrawStateRuntimeGlow(nodeRect);
 
             DrawRoundedRect(nodeRect, cardBodyColor, borderColor, StateCornerRadius);
 
@@ -377,22 +373,6 @@ namespace FSMModule.Graph.Editor
                 nodeRect.width,
                 nodeRect.height);
             DrawRoundedRect(shadowRect, NodeShadowColor, Color.clear, StateCornerRadius + 1f);
-        }
-
-        private static void DrawStateRuntimeGlow(Rect nodeRect)
-        {
-            Handles.BeginGUI();
-
-            for (var i = 0; i < 3; i++)
-            {
-                var glowRect = ExpandRect(nodeRect, 3f + (i * 2f));
-                var glowColor = new Color(RuntimeGlowColor.r, RuntimeGlowColor.g, RuntimeGlowColor.b, 0.18f - (i * 0.045f));
-                Handles.color = glowColor;
-                DrawRoundedOutline(glowRect, StateCornerRadius + (i * 1.5f), Mathf.Max(1f, NodeRuntimeGlowThickness - i));
-            }
-
-            Handles.color = Color.white;
-            Handles.EndGUI();
         }
 
         private static void DrawRoundedRect(Rect rect, Color fillColor, Color borderColor, float radius)
@@ -1654,6 +1634,13 @@ namespace FSMModule.Graph.Editor
                 return true;
             }
 
+            if (state != null && state.Id == GetRuntimeCurrentStateId())
+            {
+                badgeText = "Active";
+                badgeColor = RuntimeActiveColor;
+                return true;
+            }
+
             if (outgoingTransitionCount == 0)
             {
                 badgeText = "No Exit";
@@ -1740,9 +1727,6 @@ namespace FSMModule.Graph.Editor
             };
             _transitionLabelStyle.normal.textColor = NodeTitleColor;
         }
-
-        private static Rect ExpandRect(Rect rect, float amount) =>
-            new(rect.x - amount, rect.y - amount, rect.width + (amount * 2f), rect.height + (amount * 2f));
 
         private readonly struct TransitionVisualData
         {
