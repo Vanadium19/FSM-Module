@@ -84,6 +84,7 @@ namespace FSMModule.Graph.Editor
         {
             wantsMouseMove = true;
             Undo.undoRedoPerformed += HandleUndoRedoPerformed;
+            EditorApplication.playModeStateChanged += HandlePlayModeStateChanged;
 
             if (_graph == null && TryGetSelectionContext(out var graph, out var runner))
                 SetSelectionContext(graph, runner);
@@ -92,6 +93,7 @@ namespace FSMModule.Graph.Editor
         private void OnDisable()
         {
             Undo.undoRedoPerformed -= HandleUndoRedoPerformed;
+            EditorApplication.playModeStateChanged -= HandlePlayModeStateChanged;
 
             if (_embeddedEditor != null)
                 DestroyImmediate(_embeddedEditor);
@@ -110,6 +112,20 @@ namespace FSMModule.Graph.Editor
         {
             if (HasRuntimeRunner)
                 Repaint();
+        }
+
+        private void HandlePlayModeStateChanged(PlayModeStateChange stateChange)
+        {
+            if (TryGetSelectionContext(out var graph, out var runner))
+            {
+                SetSelectionContext(graph, runner);
+            }
+            else if (_graph != null)
+            {
+                _runner = null;
+            }
+
+            Repaint();
         }
 
         private void OnGUI()
