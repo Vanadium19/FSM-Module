@@ -1,9 +1,0 @@
-{
-	"name": "FSMContextEditorModule",
-	"references": [
-		"FSMContextModule"
-	],
-	"includePlatforms": [
-		"Editor"
-	]
-}

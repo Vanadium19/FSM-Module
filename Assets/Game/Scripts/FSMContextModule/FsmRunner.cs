@@ -5,8 +5,6 @@ namespace FSMModule
 {
     public abstract class FsmRunner : MonoBehaviour
     {
-        [SerializeField] private ComponentBinding[] bindings = Array.Empty<ComponentBinding>();
-
         protected FsmContext Context { get; private set; }
         protected IState State { get; private set; }
 
@@ -40,20 +38,7 @@ namespace FSMModule
                 disposableState.Dispose();
         }
 
-        protected virtual FsmContext CreateContext()
-        {
-            var context = new FsmContext(gameObject, transform);
-
-            foreach (var binding in bindings)
-            {
-                if (binding == null || !binding.IsValid)
-                    continue;
-
-                context.Bindings.SetObject(binding.Key, binding.Target);
-            }
-
-            return context;
-        }
+        protected virtual FsmContext CreateContext() => new(gameObject, transform);
 
         protected abstract IState CreateState(FsmContext context);
     }

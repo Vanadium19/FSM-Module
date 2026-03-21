@@ -6,7 +6,6 @@ namespace FSMModule.Graph
     {
         protected FsmContext Context { get; private set; }
         protected Blackboard Blackboard => Context.Blackboard;
-        protected FsmBindings Bindings => Context.Bindings;
         protected GameObject Owner => Context.Owner;
         protected Transform OwnerTransform => Context.Transform;
 
