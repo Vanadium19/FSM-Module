@@ -1,0 +1,7 @@
+{
+	"name": "FSMGraphModule",
+	"references": [
+		"FSMModule",
+		"FSMContextModule"
+	]
+}

@@ -1,8 +1,11 @@
 {
-	"name": "FSMExampleModule",
+	"name": "FSMGraphEditorModule",
 	"references": [
 		"FSMModule",
 		"FSMContextModule",
 		"FSMGraphModule"
+	],
+	"includePlatforms": [
+		"Editor"
 	]
 }

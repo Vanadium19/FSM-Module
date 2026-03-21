@@ -10,8 +10,15 @@ namespace FSMModule
         protected FsmContext Context { get; private set; }
         protected IState State { get; private set; }
 
+        private bool _isDisposed;
+
+        public FsmContext RuntimeContext => Context;
+        public IState RuntimeState => State;
+        public bool IsInitialized => Context != null && State != null;
+
         protected virtual void Awake()
         {
+            _isDisposed = false;
             Context = CreateContext();
             State = CreateState(Context);
         }
@@ -21,6 +28,17 @@ namespace FSMModule
         protected virtual void Update() => State?.OnUpdate(Time.deltaTime);
 
         protected virtual void OnDisable() => State?.OnExit();
+
+        protected virtual void OnDestroy()
+        {
+            if (_isDisposed)
+                return;
+
+            _isDisposed = true;
+
+            if (State is IDisposable disposableState)
+                disposableState.Dispose();
+        }
 
         protected virtual FsmContext CreateContext()
         {
