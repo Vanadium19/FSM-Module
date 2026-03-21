@@ -43,6 +43,27 @@ namespace FSMModule.Graph.Editor
         private static readonly Color NodeTitleColor = new(0.96f, 0.97f, 0.99f);
         private static readonly Color NodeSubtitleColor = new(0.79f, 0.83f, 0.90f);
         private static readonly Color NodeFooterColor = new(0.69f, 0.75f, 0.84f);
+        private static readonly Color InspectorBackgroundColor = new(0.115f, 0.13f, 0.16f);
+        private static readonly Color InspectorDividerColor = new(0.52f, 0.61f, 0.74f, 0.10f);
+        private static readonly Color InspectorCardColor = new(0.16f, 0.185f, 0.225f);
+        private static readonly Color InspectorCardBorderColor = new(0.56f, 0.65f, 0.77f, 0.12f);
+        private static readonly Color InspectorSectionTitleColor = new(0.95f, 0.97f, 0.99f);
+        private static readonly Color InspectorSectionSubtitleColor = new(0.68f, 0.75f, 0.85f);
+        private static readonly Color InspectorMetaLabelColor = new(0.57f, 0.65f, 0.76f);
+        private static readonly Color InspectorMetaValueColor = new(0.89f, 0.92f, 0.96f);
+        private static readonly Color InspectorInfoBackgroundColor = new(0.13f, 0.155f, 0.19f);
+        private static readonly Color InspectorInfoBorderColor = new(0.38f, 0.52f, 0.70f, 0.16f);
+        private static readonly Color InspectorControlTint = new(0.68f, 0.75f, 0.85f);
+        private static readonly Color InspectorControlTintStrong = new(0.68f, 0.75f, 0.85f);
+        private static readonly Color InspectorControlDangerTint = new(0.43f, 0.21f, 0.24f);
+        private static readonly Color InspectorButtonColor = new(0.21f, 0.25f, 0.31f);
+        private static readonly Color InspectorButtonHoverColor = new(0.25f, 0.30f, 0.37f);
+        private static readonly Color InspectorButtonActiveColor = new(0.18f, 0.22f, 0.28f);
+        private static readonly Color InspectorButtonBorderColor = new(0.56f, 0.68f, 0.83f, 0.18f);
+        private static readonly Color InspectorDangerButtonColor = new(0.31f, 0.22f, 0.26f);
+        private static readonly Color InspectorDangerButtonHoverColor = new(0.38f, 0.25f, 0.31f);
+        private static readonly Color InspectorDangerButtonActiveColor = new(0.26f, 0.18f, 0.22f);
+        private static readonly Color InspectorButtonTextColor = new(0.94f, 0.96f, 0.99f);
         private const float TransitionLaneSpacing = 28f;
         private const float TransitionSelectionDistance = 10f;
         private const float TransitionArrowLength = 11f;
@@ -82,6 +103,24 @@ namespace FSMModule.Graph.Editor
         private GUIStyle _nodeFooterStyle;
         private GUIStyle _nodeBadgeStyle;
         private GUIStyle _transitionLabelStyle;
+        private GUIStyle _inspectorSectionStyle;
+        private GUIStyle _inspectorSectionTitleStyle;
+        private GUIStyle _inspectorSectionSubtitleStyle;
+        private GUIStyle _inspectorMetaLabelStyle;
+        private GUIStyle _inspectorMetaValueStyle;
+        private GUIStyle _inspectorEmptyStateStyle;
+        private GUIStyle _inspectorInfoTextStyle;
+        private GUIStyle _inspectorButtonStyle;
+        private GUIStyle _inspectorDangerButtonStyle;
+        private GUIStyle _inspectorMiniButtonStyle;
+        private Texture2D _inspectorSectionTexture;
+        private Texture2D _inspectorInfoTexture;
+        private Texture2D _inspectorButtonTexture;
+        private Texture2D _inspectorButtonHoverTexture;
+        private Texture2D _inspectorButtonActiveTexture;
+        private Texture2D _inspectorDangerButtonTexture;
+        private Texture2D _inspectorDangerButtonHoverTexture;
+        private Texture2D _inspectorDangerButtonActiveTexture;
 
         [MenuItem("Window/FSM/Graph Editor")]
         public static void OpenWindow()
@@ -127,6 +166,15 @@ namespace FSMModule.Graph.Editor
 
             if (_embeddedEditor != null)
                 DestroyImmediate(_embeddedEditor);
+
+            DestroyInspectorTexture(ref _inspectorSectionTexture);
+            DestroyInspectorTexture(ref _inspectorInfoTexture);
+            DestroyInspectorTexture(ref _inspectorButtonTexture);
+            DestroyInspectorTexture(ref _inspectorButtonHoverTexture);
+            DestroyInspectorTexture(ref _inspectorButtonActiveTexture);
+            DestroyInspectorTexture(ref _inspectorDangerButtonTexture);
+            DestroyInspectorTexture(ref _inspectorDangerButtonHoverTexture);
+            DestroyInspectorTexture(ref _inspectorDangerButtonActiveTexture);
         }
 
         private void OnSelectionChange()
@@ -546,88 +594,148 @@ namespace FSMModule.Graph.Editor
 
         private void DrawInspector(Rect inspectorRect)
         {
-            GUILayout.BeginArea(inspectorRect, EditorStyles.helpBox);
+            EditorGUI.DrawRect(inspectorRect, InspectorBackgroundColor);
+            EditorGUI.DrawRect(new Rect(inspectorRect.x, inspectorRect.y, 1f, inspectorRect.height), InspectorDividerColor);
+
+            GUILayout.BeginArea(inspectorRect);
             _inspectorScroll = EditorGUILayout.BeginScrollView(_inspectorScroll);
 
+            GUILayout.Space(10f);
             DrawGraphSection();
-            EditorGUILayout.Space();
+            EditorGUILayout.Space(10f);
             DrawBlackboardSection();
-            EditorGUILayout.Space();
+            EditorGUILayout.Space(10f);
             DrawSelectionSection();
+            GUILayout.Space(12f);
 
             EditorGUILayout.EndScrollView();
             GUILayout.EndArea();
         }
 
+        private void DrawInspectorSection(string title, string subtitle, Action drawContent)
+        {
+            var sectionStyle = _inspectorSectionStyle ?? EditorStyles.helpBox;
+            var titleStyle = _inspectorSectionTitleStyle ?? EditorStyles.boldLabel;
+            var subtitleStyle = _inspectorSectionSubtitleStyle ?? EditorStyles.miniLabel;
+
+            using (new EditorGUILayout.VerticalScope(sectionStyle))
+            {
+                GUILayout.Label(title, titleStyle);
+
+                if (!string.IsNullOrWhiteSpace(subtitle))
+                {
+                    GUILayout.Space(-1f);
+                    GUILayout.Label(subtitle, subtitleStyle);
+                }
+
+                GUILayout.Space(8f);
+                drawContent?.Invoke();
+            }
+        }
+
+        private void DrawInspectorMetaRow(string label, string value)
+        {
+            var labelStyle = _inspectorMetaLabelStyle ?? EditorStyles.miniLabel;
+            var valueStyle = _inspectorMetaValueStyle ?? EditorStyles.label;
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                GUILayout.Label(label, labelStyle, GUILayout.Width(72f));
+                GUILayout.Label(value, valueStyle, GUILayout.ExpandWidth(true));
+            }
+        }
+
+        private void DrawInspectorInfo(string message)
+        {
+            var infoContainerStyle = _inspectorEmptyStateStyle ?? EditorStyles.helpBox;
+            var infoTextStyle = _inspectorInfoTextStyle ?? EditorStyles.wordWrappedMiniLabel;
+
+            using (new EditorGUILayout.VerticalScope(infoContainerStyle))
+            {
+                GUILayout.Label(message, infoTextStyle);
+            }
+        }
+
         private void DrawGraphSection()
         {
-            EditorGUILayout.LabelField("Graph", EditorStyles.boldLabel);
-            EditorGUILayout.LabelField("Asset", _graph != null ? _graph.name : "<None>");
+            DrawInspectorSection(
+                "Graph",
+                _runner != null ? "Runtime binding" : "Asset context",
+                () =>
+                {
+                    DrawInspectorMetaRow("Asset", _graph != null ? _graph.name : "<None>");
 
-            if (_runner != null)
-                EditorGUILayout.LabelField("Runner", _runner.name);
+                    if (_runner != null)
+                        DrawInspectorMetaRow("Runner", _runner.name);
 
-            if (_graph.States.Count == 0)
-            {
-                EditorGUILayout.HelpBox("Add at least one state to make the graph runnable.", MessageType.Info);
-                return;
-            }
+                    if (_graph.States.Count == 0)
+                    {
+                        DrawInspectorInfo("Add at least one state to make the graph runnable.");
+                        return;
+                    }
 
-            var stateNames = _graph.States.Select(state => state.Name).ToArray();
-            var currentIndex = Mathf.Max(0, _graph.States.FindIndex(state => state.Id == _graph.InitialStateId));
-            var updatedIndex = EditorGUILayout.Popup("Initial State", currentIndex, stateNames);
+                    var stateNames = _graph.States.Select(state => state.Name).ToArray();
+                    var currentIndex = Mathf.Max(0, _graph.States.FindIndex(state => state.Id == _graph.InitialStateId));
+                    int updatedIndex;
+                    using (new GuiBackgroundColorScope(InspectorControlTint))
+                        updatedIndex = EditorGUILayout.Popup("Initial State", currentIndex, stateNames);
 
-            if (updatedIndex >= 0 && updatedIndex < _graph.States.Count && updatedIndex != currentIndex)
-            {
-                RecordGraph("Change Initial State");
-                _graph.InitialStateId = _graph.States[updatedIndex].Id;
-                MarkDirty();
-            }
+                    if (updatedIndex >= 0 && updatedIndex < _graph.States.Count && updatedIndex != currentIndex)
+                    {
+                        RecordGraph("Change Initial State");
+                        _graph.InitialStateId = _graph.States[updatedIndex].Id;
+                        MarkDirty();
+                    }
+                });
         }
 
         private void DrawBlackboardSection()
         {
-            EditorGUILayout.LabelField("Parameters", EditorStyles.boldLabel);
-
-            using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
-            {
-                if (HasRuntimeRunner)
-                    EditorGUILayout.HelpBox($"Showing runtime values from '{_runner.name}'.", MessageType.None);
-
-                DrawBlackboardToolbar();
-
-                var visibleParameterCount = 0;
-                for (var i = 0; i < _graph.BlackboardParameters.Count; i++)
+            DrawInspectorSection(
+                "Parameters",
+                HasRuntimeRunner ? $"Runtime values from {_runner.name}" : "Transition parameter defaults",
+                () =>
                 {
-                    var parameter = _graph.BlackboardParameters[i];
-                    if (parameter == null || !MatchesBlackboardSearch(parameter))
-                        continue;
+                    if (HasRuntimeRunner)
+                        DrawInspectorInfo($"Showing runtime values from '{_runner.name}'.");
 
-                    visibleParameterCount++;
+                    DrawBlackboardToolbar();
 
-                    if (DrawBlackboardParameterRow(parameter, i))
-                        return;
-                }
+                    var visibleParameterCount = 0;
+                    for (var i = 0; i < _graph.BlackboardParameters.Count; i++)
+                    {
+                        var parameter = _graph.BlackboardParameters[i];
+                        if (parameter == null || !MatchesBlackboardSearch(parameter))
+                            continue;
 
-                if (_graph.BlackboardParameters.Count == 0)
-                    EditorGUILayout.HelpBox("No parameters yet. Use + to add Float, Int or Bool.", MessageType.None);
-                else if (visibleParameterCount == 0)
-                    EditorGUILayout.HelpBox("No parameters match the current search.", MessageType.None);
-            }
+                        visibleParameterCount++;
+
+                        if (DrawBlackboardParameterRow(parameter, i))
+                            return;
+                    }
+
+                    if (_graph.BlackboardParameters.Count == 0)
+                        DrawInspectorInfo("No parameters yet. Use + to add Float, Int or Bool.");
+                    else if (visibleParameterCount == 0)
+                        DrawInspectorInfo("No parameters match the current search.");
+                });
         }
 
         private void DrawBlackboardToolbar()
         {
-            using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
+            using (new EditorGUILayout.HorizontalScope())
             {
-                _blackboardSearch = EditorGUILayout.TextField(
-                    _blackboardSearch,
-                    GetToolbarSearchFieldStyle(),
-                    GUILayout.ExpandWidth(true));
+                using (new GuiBackgroundColorScope(InspectorControlTint))
+                {
+                    _blackboardSearch = EditorGUILayout.TextField(
+                        _blackboardSearch,
+                        GetToolbarSearchFieldStyle(),
+                        GUILayout.ExpandWidth(true));
+                }
 
                 using (new EditorGUI.DisabledScope(HasRuntimeRunner))
                 {
-                    if (GUILayout.Button("+", EditorStyles.toolbarButton, GUILayout.Width(26f)))
+                    if (GUILayout.Button("+", _inspectorMiniButtonStyle, GUILayout.Width(28f)))
                         ShowAddBlackboardParameterMenu();
                 }
             }
@@ -645,7 +753,10 @@ namespace FSMModule.Graph.Editor
             {
                 EditorGUILayout.LabelField(parameter.Type.ToString(), EditorStyles.miniLabel, GUILayout.Width(34f));
 
-                var updatedKey = EditorGUILayout.TextField(parameter.Key, GUILayout.ExpandWidth(true));
+                string updatedKey;
+                using (new GuiBackgroundColorScope(InspectorControlTint))
+                    updatedKey = EditorGUILayout.TextField(parameter.Key, GUILayout.ExpandWidth(true));
+
                 var updatedBoolValue = parameter.BoolValue;
                 var updatedIntValue = parameter.IntValue;
                 var updatedFloatValue = parameter.FloatValue;
@@ -653,17 +764,20 @@ namespace FSMModule.Graph.Editor
                 switch (parameter.Type)
                 {
                     case BlackboardParameterType.Bool:
-                        updatedBoolValue = EditorGUILayout.Toggle(parameter.BoolValue, GUILayout.Width(18f));
+                        using (new GuiBackgroundColorScope(InspectorControlTintStrong))
+                            updatedBoolValue = EditorGUILayout.Toggle(parameter.BoolValue, GUILayout.Width(18f));
                         break;
                     case BlackboardParameterType.Int:
-                        updatedIntValue = EditorGUILayout.IntField(parameter.IntValue, GUILayout.Width(64f));
+                        using (new GuiBackgroundColorScope(InspectorControlTint))
+                            updatedIntValue = EditorGUILayout.IntField(parameter.IntValue, GUILayout.Width(64f));
                         break;
                     case BlackboardParameterType.Float:
-                        updatedFloatValue = EditorGUILayout.FloatField(parameter.FloatValue, GUILayout.Width(64f));
+                        using (new GuiBackgroundColorScope(InspectorControlTint))
+                            updatedFloatValue = EditorGUILayout.FloatField(parameter.FloatValue, GUILayout.Width(64f));
                         break;
                 }
 
-                if (GUILayout.Button("X", EditorStyles.miniButton, GUILayout.Width(22f)))
+                if (GUILayout.Button("X", _inspectorDangerButtonStyle, GUILayout.Width(28f)))
                 {
                     RecordGraph("Remove Parameter");
                     _graph.BlackboardParameters.RemoveAt(index);
@@ -695,13 +809,16 @@ namespace FSMModule.Graph.Editor
                 EditorGUILayout.LabelField(parameter.Type.ToString(), EditorStyles.miniLabel, GUILayout.Width(34f));
 
                 using (new EditorGUI.DisabledScope(true))
+                using (new GuiBackgroundColorScope(InspectorControlTint))
                     EditorGUILayout.TextField(parameter.Key, GUILayout.ExpandWidth(true));
 
                 switch (parameter.Type)
                 {
                     case BlackboardParameterType.Bool:
                         EditorGUI.BeginChangeCheck();
-                        var updatedBoolValue = EditorGUILayout.Toggle(GetRuntimeBoolValue(parameter), GUILayout.Width(18f));
+                        bool updatedBoolValue;
+                        using (new GuiBackgroundColorScope(InspectorControlTintStrong))
+                            updatedBoolValue = EditorGUILayout.Toggle(GetRuntimeBoolValue(parameter), GUILayout.Width(18f));
                         if (EditorGUI.EndChangeCheck())
                         {
                             _runner.SetBool(parameter.Key, updatedBoolValue);
@@ -711,7 +828,9 @@ namespace FSMModule.Graph.Editor
                         break;
                     case BlackboardParameterType.Int:
                         EditorGUI.BeginChangeCheck();
-                        var updatedIntValue = EditorGUILayout.IntField(GetRuntimeIntValue(parameter), GUILayout.Width(64f));
+                        int updatedIntValue;
+                        using (new GuiBackgroundColorScope(InspectorControlTint))
+                            updatedIntValue = EditorGUILayout.IntField(GetRuntimeIntValue(parameter), GUILayout.Width(64f));
                         if (EditorGUI.EndChangeCheck())
                         {
                             _runner.SetInt(parameter.Key, updatedIntValue);
@@ -721,7 +840,9 @@ namespace FSMModule.Graph.Editor
                         break;
                     case BlackboardParameterType.Float:
                         EditorGUI.BeginChangeCheck();
-                        var updatedFloatValue = EditorGUILayout.FloatField(GetRuntimeFloatValue(parameter), GUILayout.Width(64f));
+                        float updatedFloatValue;
+                        using (new GuiBackgroundColorScope(InspectorControlTint))
+                            updatedFloatValue = EditorGUILayout.FloatField(GetRuntimeFloatValue(parameter), GUILayout.Width(64f));
                         if (EditorGUI.EndChangeCheck())
                         {
                             _runner.SetFloat(parameter.Key, updatedFloatValue);
@@ -794,28 +915,35 @@ namespace FSMModule.Graph.Editor
 
         private void DrawSelectionSection()
         {
-            EditorGUILayout.LabelField("Selection", EditorStyles.boldLabel);
+            DrawInspectorSection(
+                "Selection",
+                "Context-sensitive editor",
+                () =>
+                {
+                    if (_graph.FindState(_selectedStateId) is { } selectedState)
+                    {
+                        DrawSelectedState(selectedState);
+                        return;
+                    }
 
-            if (_graph.FindState(_selectedStateId) is { } selectedState)
-            {
-                DrawSelectedState(selectedState);
-                return;
-            }
+                    if (_graph.FindTransition(_selectedTransitionId) is { } selectedTransition)
+                    {
+                        DrawSelectedTransition(selectedTransition);
+                        return;
+                    }
 
-            if (_graph.FindTransition(_selectedTransitionId) is { } selectedTransition)
-            {
-                DrawSelectedTransition(selectedTransition);
-                return;
-            }
-
-            EditorGUILayout.HelpBox("Select a state or a transition on the canvas to edit it.", MessageType.None);
+                    DrawInspectorInfo("Select a state or a transition on the canvas to edit it.");
+                });
         }
 
         private void DrawSelectedState(FsmGraphStateNode state)
         {
-            EditorGUILayout.LabelField("State Node", EditorStyles.miniBoldLabel);
+            GUILayout.Label("State Node", _inspectorSectionSubtitleStyle ?? EditorStyles.miniBoldLabel);
 
-            var updatedName = EditorGUILayout.TextField("Name", state.Name);
+            string updatedName;
+            using (new GuiBackgroundColorScope(InspectorControlTint))
+                updatedName = EditorGUILayout.TextField("Name", state.Name);
+
             if (updatedName != state.Name)
             {
                 RecordGraph("Rename State");
@@ -824,7 +952,9 @@ namespace FSMModule.Graph.Editor
             }
 
             EditorGUI.BeginChangeCheck();
-            var updatedState = (FsmStateBehaviour)EditorGUILayout.ObjectField("Behaviour", state.State, typeof(FsmStateBehaviour), false);
+            FsmStateBehaviour updatedState;
+            using (new GuiBackgroundColorScope(InspectorControlTint))
+                updatedState = (FsmStateBehaviour)EditorGUILayout.ObjectField("Behaviour", state.State, typeof(FsmStateBehaviour), false);
             if (EditorGUI.EndChangeCheck())
             {
                 RecordGraph("Assign State Behaviour");
@@ -835,10 +965,10 @@ namespace FSMModule.Graph.Editor
 
             using (new EditorGUILayout.HorizontalScope())
             {
-                if (GUILayout.Button("Create Behaviour"))
+                if (GUILayout.Button("Create Behaviour", _inspectorButtonStyle))
                     ShowCreateStateMenu(state);
 
-                if (GUILayout.Button("Start Transition"))
+                if (GUILayout.Button("Start Transition", _inspectorButtonStyle))
                 {
                     _pendingTransitionFromStateId = state.Id;
                     _selectedTransitionId = null;
@@ -848,17 +978,17 @@ namespace FSMModule.Graph.Editor
             if (state.State != null)
                 DrawEmbeddedEditor(state.State);
             else
-                EditorGUILayout.HelpBox("Choose or create a state behaviour. Users only need to inherit from FsmStateBehaviour.", MessageType.Info);
+                DrawInspectorInfo("Choose or create a state behaviour. Users only need to inherit from FsmStateBehaviour.");
 
             EditorGUILayout.Space();
 
-            if (GUILayout.Button("Delete State"))
+            if (GUILayout.Button("Delete State", _inspectorDangerButtonStyle))
                 DeleteState(state);
         }
 
         private void DrawSelectedTransition(FsmGraphTransition transition)
         {
-            EditorGUILayout.LabelField("Transition", EditorStyles.miniBoldLabel);
+            GUILayout.Label("Transition", _inspectorSectionSubtitleStyle ?? EditorStyles.miniBoldLabel);
 
             var stateOptions = _graph.States.ToArray();
             var stateNames = stateOptions.Select(state => state.Name).ToArray();
@@ -868,8 +998,12 @@ namespace FSMModule.Graph.Editor
 
             if (stateOptions.Length > 0)
             {
-                var updatedFromIndex = EditorGUILayout.Popup("From", fromIndex, stateNames);
-                var updatedToIndex = EditorGUILayout.Popup("To", toIndex, stateNames);
+                int updatedFromIndex;
+                int updatedToIndex;
+                using (new GuiBackgroundColorScope(InspectorControlTint))
+                    updatedFromIndex = EditorGUILayout.Popup("From", fromIndex, stateNames);
+                using (new GuiBackgroundColorScope(InspectorControlTint))
+                    updatedToIndex = EditorGUILayout.Popup("To", toIndex, stateNames);
 
                 if (updatedFromIndex != fromIndex)
                 {
@@ -888,18 +1022,16 @@ namespace FSMModule.Graph.Editor
 
             if (transition.Transition == null)
             {
-                EditorGUILayout.HelpBox("This transition has no settings asset yet.", MessageType.Warning);
+                DrawInspectorInfo("This transition has no settings asset yet.");
 
-                if (GUILayout.Button("Create Standard Transition"))
+                if (GUILayout.Button("Create Standard Transition", _inspectorButtonStyle))
                     ReplaceWithStandardTransition(transition);
             }
             else if (transition.Transition is not FsmBlackboardTransitionBehaviour)
             {
-                EditorGUILayout.HelpBox(
-                    "Legacy custom transition detected. New transitions use the built-in blackboard condition workflow.",
-                    MessageType.Warning);
+                DrawInspectorInfo("Legacy custom transition detected. New transitions use the built-in blackboard condition workflow.");
 
-                if (GUILayout.Button("Replace With Standard Transition"))
+                if (GUILayout.Button("Replace With Standard Transition", _inspectorButtonStyle))
                     ReplaceWithStandardTransition(transition);
 
                 DrawEmbeddedEditor(transition.Transition);
@@ -911,7 +1043,7 @@ namespace FSMModule.Graph.Editor
 
             EditorGUILayout.Space();
 
-            if (GUILayout.Button("Delete Transition"))
+            if (GUILayout.Button("Delete Transition", _inspectorDangerButtonStyle))
                 DeleteTransition(transition);
         }
 
@@ -928,8 +1060,9 @@ namespace FSMModule.Graph.Editor
                 return;
 
             EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Behaviour Settings", EditorStyles.miniBoldLabel);
-            _embeddedEditor.OnInspectorGUI();
+            GUILayout.Label("Behaviour Settings", _inspectorSectionSubtitleStyle ?? EditorStyles.miniBoldLabel);
+            using (new GuiBackgroundColorScope(InspectorControlTint))
+                _embeddedEditor.OnInspectorGUI();
         }
 
         private bool CancelCurrentAction()
@@ -1682,8 +1815,47 @@ namespace FSMModule.Graph.Editor
 
         private void EnsureStyles()
         {
-            if (_nodeTitleStyle != null)
+            if (_nodeTitleStyle != null &&
+                _nodeSubtitleStyle != null &&
+                _nodeFooterStyle != null &&
+                _nodeBadgeStyle != null &&
+                _transitionLabelStyle != null &&
+                _inspectorSectionStyle != null &&
+                _inspectorSectionTitleStyle != null &&
+                _inspectorSectionSubtitleStyle != null &&
+                _inspectorMetaLabelStyle != null &&
+                _inspectorMetaValueStyle != null &&
+                _inspectorEmptyStateStyle != null &&
+                _inspectorInfoTextStyle != null &&
+                _inspectorButtonStyle != null &&
+                _inspectorDangerButtonStyle != null &&
+                _inspectorMiniButtonStyle != null &&
+                _inspectorSectionTexture != null &&
+                _inspectorInfoTexture != null &&
+                _inspectorButtonTexture != null &&
+                _inspectorButtonHoverTexture != null &&
+                _inspectorButtonActiveTexture != null &&
+                _inspectorDangerButtonTexture != null &&
+                _inspectorDangerButtonHoverTexture != null &&
+                _inspectorDangerButtonActiveTexture != null)
                 return;
+
+            DestroyInspectorTexture(ref _inspectorSectionTexture);
+            DestroyInspectorTexture(ref _inspectorInfoTexture);
+            DestroyInspectorTexture(ref _inspectorButtonTexture);
+            DestroyInspectorTexture(ref _inspectorButtonHoverTexture);
+            DestroyInspectorTexture(ref _inspectorButtonActiveTexture);
+            DestroyInspectorTexture(ref _inspectorDangerButtonTexture);
+            DestroyInspectorTexture(ref _inspectorDangerButtonHoverTexture);
+            DestroyInspectorTexture(ref _inspectorDangerButtonActiveTexture);
+            _inspectorSectionTexture = CreateRoundedTexture(24, 24, InspectorCardColor, InspectorCardBorderColor, 8);
+            _inspectorInfoTexture = CreateRoundedTexture(20, 20, InspectorInfoBackgroundColor, InspectorInfoBorderColor, 7);
+            _inspectorButtonTexture = CreateRoundedTexture(20, 20, InspectorButtonColor, InspectorButtonBorderColor, 6);
+            _inspectorButtonHoverTexture = CreateRoundedTexture(20, 20, InspectorButtonHoverColor, InspectorButtonBorderColor, 6);
+            _inspectorButtonActiveTexture = CreateRoundedTexture(20, 20, InspectorButtonActiveColor, InspectorButtonBorderColor, 6);
+            _inspectorDangerButtonTexture = CreateRoundedTexture(20, 20, InspectorDangerButtonColor, new Color(0.75f, 0.39f, 0.44f, 0.18f), 6);
+            _inspectorDangerButtonHoverTexture = CreateRoundedTexture(20, 20, InspectorDangerButtonHoverColor, new Color(0.82f, 0.44f, 0.49f, 0.22f), 6);
+            _inspectorDangerButtonActiveTexture = CreateRoundedTexture(20, 20, InspectorDangerButtonActiveColor, new Color(0.70f, 0.35f, 0.40f, 0.18f), 6);
 
             _nodeTitleStyle = new GUIStyle(EditorStyles.boldLabel)
             {
@@ -1726,6 +1898,206 @@ namespace FSMModule.Graph.Editor
                 clipping = TextClipping.Clip,
             };
             _transitionLabelStyle.normal.textColor = NodeTitleColor;
+
+            _inspectorSectionStyle = new GUIStyle(GUIStyle.none)
+            {
+                border = new RectOffset(8, 8, 8, 8),
+                padding = new RectOffset(12, 12, 12, 12),
+                margin = new RectOffset(10, 10, 0, 0),
+                normal =
+                {
+                    background = _inspectorSectionTexture,
+                },
+            };
+
+            _inspectorSectionTitleStyle = new GUIStyle(EditorStyles.boldLabel)
+            {
+                fontSize = 14,
+                fontStyle = FontStyle.Bold,
+                clipping = TextClipping.Clip,
+            };
+            _inspectorSectionTitleStyle.normal.textColor = InspectorSectionTitleColor;
+
+            _inspectorSectionSubtitleStyle = new GUIStyle(EditorStyles.miniLabel)
+            {
+                fontSize = 10,
+                clipping = TextClipping.Clip,
+            };
+            _inspectorSectionSubtitleStyle.normal.textColor = InspectorSectionSubtitleColor;
+
+            _inspectorMetaLabelStyle = new GUIStyle(EditorStyles.miniLabel)
+            {
+                fontSize = 11,
+                clipping = TextClipping.Clip,
+            };
+            _inspectorMetaLabelStyle.normal.textColor = InspectorMetaLabelColor;
+
+            _inspectorMetaValueStyle = new GUIStyle(EditorStyles.label)
+            {
+                fontSize = 11,
+                clipping = TextClipping.Clip,
+                wordWrap = false,
+            };
+            _inspectorMetaValueStyle.normal.textColor = InspectorMetaValueColor;
+
+            _inspectorEmptyStateStyle = new GUIStyle(GUIStyle.none)
+            {
+                border = new RectOffset(7, 7, 7, 7),
+                padding = new RectOffset(10, 10, 8, 8),
+                margin = new RectOffset(0, 0, 2, 2),
+                normal =
+                {
+                    background = _inspectorInfoTexture,
+                },
+            };
+
+            _inspectorInfoTextStyle = new GUIStyle(EditorStyles.wordWrappedMiniLabel)
+            {
+                fontSize = 11,
+                wordWrap = true,
+            };
+            _inspectorInfoTextStyle.normal.textColor = InspectorSectionSubtitleColor;
+
+            _inspectorButtonStyle = CreateInspectorButtonStyle(
+                _inspectorButtonTexture,
+                _inspectorButtonHoverTexture,
+                _inspectorButtonActiveTexture,
+                11,
+                new RectOffset(10, 10, 7, 7));
+
+            _inspectorDangerButtonStyle = CreateInspectorButtonStyle(
+                _inspectorDangerButtonTexture,
+                _inspectorDangerButtonHoverTexture,
+                _inspectorDangerButtonActiveTexture,
+                11,
+                new RectOffset(10, 10, 7, 7));
+
+            _inspectorMiniButtonStyle = CreateInspectorButtonStyle(
+                _inspectorButtonTexture,
+                _inspectorButtonHoverTexture,
+                _inspectorButtonActiveTexture,
+                10,
+                new RectOffset(8, 8, 5, 5));
+        }
+
+        private GUIStyle CreateInspectorButtonStyle(
+            Texture2D normalBackground,
+            Texture2D hoverBackground,
+            Texture2D activeBackground,
+            int fontSize,
+            RectOffset padding)
+        {
+            var style = new GUIStyle(GUI.skin.button)
+            {
+                border = new RectOffset(6, 6, 6, 6),
+                padding = padding,
+                margin = new RectOffset(2, 2, 2, 2),
+                fontSize = fontSize,
+                alignment = TextAnchor.MiddleCenter,
+                clipping = TextClipping.Clip,
+            };
+
+            style.normal.background = normalBackground;
+            style.normal.scaledBackgrounds = new[] { normalBackground };
+            style.hover.background = hoverBackground;
+            style.hover.scaledBackgrounds = new[] { hoverBackground };
+            style.active.background = activeBackground;
+            style.active.scaledBackgrounds = new[] { activeBackground };
+            style.focused.background = hoverBackground;
+            style.focused.scaledBackgrounds = new[] { hoverBackground };
+            style.onNormal.background = normalBackground;
+            style.onNormal.scaledBackgrounds = new[] { normalBackground };
+            style.onHover.background = hoverBackground;
+            style.onHover.scaledBackgrounds = new[] { hoverBackground };
+            style.onActive.background = activeBackground;
+            style.onActive.scaledBackgrounds = new[] { activeBackground };
+            style.onFocused.background = hoverBackground;
+            style.onFocused.scaledBackgrounds = new[] { hoverBackground };
+            style.normal.textColor = InspectorButtonTextColor;
+            style.hover.textColor = InspectorButtonTextColor;
+            style.active.textColor = InspectorButtonTextColor;
+            style.focused.textColor = InspectorButtonTextColor;
+            style.onNormal.textColor = InspectorButtonTextColor;
+            style.onHover.textColor = InspectorButtonTextColor;
+            style.onActive.textColor = InspectorButtonTextColor;
+            style.onFocused.textColor = InspectorButtonTextColor;
+            return style;
+        }
+
+        private static Texture2D CreateRoundedTexture(int width, int height, Color fillColor, Color borderColor, int radius)
+        {
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+            {
+                hideFlags = HideFlags.HideAndDontSave,
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp,
+            };
+
+            var pixels = new Color[width * height];
+            var innerRadius = Mathf.Max(0, radius - 1);
+
+            for (var y = 0; y < height; y++)
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    var isInside = IsInsideRoundedRect(x, y, width, height, radius);
+                    if (!isInside)
+                    {
+                        pixels[(y * width) + x] = Color.clear;
+                        continue;
+                    }
+
+                    var isBorder = !IsInsideRoundedRect(x, y, width, height, innerRadius);
+                    pixels[(y * width) + x] = isBorder ? borderColor : fillColor;
+                }
+            }
+
+            texture.SetPixels(pixels);
+            texture.Apply();
+            return texture;
+        }
+
+        private static bool IsInsideRoundedRect(int x, int y, int width, int height, int radius)
+        {
+            if (radius <= 0)
+                return x >= 0 && x < width && y >= 0 && y < height;
+
+            var maxX = width - 1;
+            var maxY = height - 1;
+
+            if ((x >= radius && x <= maxX - radius) || (y >= radius && y <= maxY - radius))
+                return true;
+
+            var cornerCenterX = x < radius ? radius : maxX - radius;
+            var cornerCenterY = y < radius ? radius : maxY - radius;
+            var deltaX = x - cornerCenterX;
+            var deltaY = y - cornerCenterY;
+            return (deltaX * deltaX) + (deltaY * deltaY) <= radius * radius;
+        }
+
+        private static void DestroyInspectorTexture(ref Texture2D texture)
+        {
+            if (texture == null)
+                return;
+
+            DestroyImmediate(texture);
+            texture = null;
+        }
+
+        private readonly struct GuiBackgroundColorScope : IDisposable
+        {
+            private readonly Color _previousColor;
+
+            public GuiBackgroundColorScope(Color color)
+            {
+                _previousColor = GUI.backgroundColor;
+                GUI.backgroundColor = color;
+            }
+
+            public void Dispose()
+            {
+                GUI.backgroundColor = _previousColor;
+            }
         }
 
         private readonly struct TransitionVisualData
