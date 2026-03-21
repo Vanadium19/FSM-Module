@@ -788,8 +788,6 @@ namespace FSMModule.Graph.Editor
 
             using (new EditorGUILayout.HorizontalScope())
             {
-                EditorGUILayout.LabelField(parameter.Type.ToString(), EditorStyles.miniLabel, GUILayout.Width(34f));
-
                 string updatedKey;
                 using (new GuiBackgroundColorScope(InspectorControlTint))
                     updatedKey = EditorGUILayout.TextField(parameter.Key, GUILayout.ExpandWidth(true));
@@ -843,8 +841,6 @@ namespace FSMModule.Graph.Editor
         {
             using (new EditorGUILayout.HorizontalScope())
             {
-                EditorGUILayout.LabelField(parameter.Type.ToString(), EditorStyles.miniLabel, GUILayout.Width(34f));
-
                 using (new EditorGUI.DisabledScope(true))
                 using (new GuiBackgroundColorScope(InspectorControlTint))
                     EditorGUILayout.TextField(parameter.Key, GUILayout.ExpandWidth(true));

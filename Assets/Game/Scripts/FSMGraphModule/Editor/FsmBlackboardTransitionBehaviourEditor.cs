@@ -92,7 +92,12 @@ namespace FSMModule.Graph.Editor
             switch (parameterType)
             {
                 case BlackboardParameterType.Bool:
-                    DrawBoolValueField(operationRect, valueRect, boolValueProperty);
+                    DrawBoolValueField(new Rect(
+                        operationRect.x,
+                        contentRect.y,
+                        contentRect.xMax - operationRect.x,
+                        contentRect.height),
+                        boolValueProperty);
                     break;
                 case BlackboardParameterType.Int:
                     EditorGUI.PropertyField(operationRect, comparisonOperatorProperty, GUIContent.none);
@@ -133,11 +138,10 @@ namespace FSMModule.Graph.Editor
             floatValueProperty.floatValue = 0f;
         }
 
-        private static void DrawBoolValueField(Rect operationRect, Rect valueRect, SerializedProperty boolValueProperty)
+        private static void DrawBoolValueField(Rect rect, SerializedProperty boolValueProperty)
         {
-            EditorGUI.LabelField(operationRect, "Is", EditorStyles.popup);
             var boolIndex = boolValueProperty.boolValue ? 0 : 1;
-            var updatedIndex = EditorGUI.Popup(valueRect, boolIndex, new[] { "true", "false" });
+            var updatedIndex = EditorGUI.Popup(rect, boolIndex, new[] { "true", "false" });
             boolValueProperty.boolValue = updatedIndex == 0;
         }
 
@@ -166,7 +170,7 @@ namespace FSMModule.Graph.Editor
             }
 
             var optionNames = parameters
-                .Select(parameter => $"{parameter.Key} ({parameter.Type})")
+                .Select(parameter => parameter.Key)
                 .ToList();
             var optionIds = parameters.Select(parameter => parameter.Id).ToList();
             var optionValues = parameters.Select(parameter => parameter.Key).ToList();
