@@ -1,0 +1,6 @@
+{
+	"name": "FSMContextModule",
+	"references": [
+		"FSMModule"
+	]
+}

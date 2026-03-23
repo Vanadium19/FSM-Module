@@ -1,0 +1,222 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-7162858787573771227
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c28e350bba714106b6f268cf50ad510b, type: 3}
+  m_Name: State 2 DebugLogStateBehaviour
+  m_EditorClassIdentifier: FSMExampleModule::FSMModule.Examples.DebugLogStateBehaviour
+  enterMessage: Enter State
+  exitMessage: Exit State
+  logOnEnter: 1
+  logOnExit: 1
+--- !u!114 &-5520092347074602407
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 361ae9970725468ca1e41a2cca21c035, type: 3}
+  m_Name: Transition
+  m_EditorClassIdentifier: FSMGraphModule::FSMModule.Graph.FsmBlackboardTransitionBehaviour
+  conditionMode: 0
+  conditions:
+  - parameterId: 339e680c24cc48b587cf061f985938ee
+    parameterKey: ShouldAttack
+    parameterType: 0
+    comparisonOperator: 0
+    boolValue: 1
+    intValue: 0
+    floatValue: 0
+--- !u!114 &-4790437797965550498
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c3585a862f0e4f8db209950dd9712ad1, type: 3}
+  m_Name: State 1 PatrolBetweenBindingsStateBehaviour
+  m_EditorClassIdentifier: FSMExampleModule::FSMModule.Examples.PatrolBetweenBindingsStateBehaviour
+  speed: 2
+  reachDistance: 0.05
+--- !u!114 &-2636525522790420052
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 361ae9970725468ca1e41a2cca21c035, type: 3}
+  m_Name: Transition
+  m_EditorClassIdentifier: FSMGraphModule::FSMModule.Graph.FsmBlackboardTransitionBehaviour
+  conditionMode: 0
+  conditions:
+  - parameterId: 339e680c24cc48b587cf061f985938ee
+    parameterKey: ShouldAttack
+    parameterType: 0
+    comparisonOperator: 0
+    boolValue: 0
+    intValue: 0
+    floatValue: 0
+--- !u!114 &-223767066335431165
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 931a44b245294e42ab0cea7fb3873f25, type: 3}
+  m_Name: State 3 TestSceneWithBindings
+  m_EditorClassIdentifier: FSMExampleModule::FSMModule.Examples.TestSceneWithBindings
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e2b6ff0ecf54457b8e7e8a79e280d95, type: 3}
+  m_Name: FSMGraph
+  m_EditorClassIdentifier: FSMGraphModule::FSMModule.Graph.FsmGraphAsset
+  initialStateId: 26d6e45a256f4cab905cf6be534f4e0f
+  blackboardParameters:
+  - id: 339e680c24cc48b587cf061f985938ee
+    key: ShouldAttack
+    type: 0
+    boolValue: 0
+    intValue: 0
+    floatValue: 0
+  - id: 574624706f374233a18b8bbbae089c43
+    key: FloatTest
+    type: 2
+    boolValue: 0
+    intValue: 0
+    floatValue: 0
+  states:
+  - id: cc1cd18b6bcd4ee78db31faf538556c9
+    name: Attack
+    position: {x: -26, y: 282.00003}
+    state: {fileID: 4851881216021740901}
+  - id: 26d6e45a256f4cab905cf6be534f4e0f
+    name: Patrol
+    position: {x: -27.748108, y: 56.820374}
+    state: {fileID: 7490986455782445255}
+  - id: 5454b0a00e984aee8fb299cb9ad20beb
+    name: State 3
+    position: {x: 299.8719, y: 166.41995}
+    state: {fileID: 0}
+  transitions:
+  - id: 9a6ebd1309c74f3fa803772e006849d4
+    fromStateId: 26d6e45a256f4cab905cf6be534f4e0f
+    toStateId: cc1cd18b6bcd4ee78db31faf538556c9
+    transition: {fileID: -5520092347074602407}
+  - id: bf51e0214a9346d2b328361c0ec3cbfb
+    fromStateId: cc1cd18b6bcd4ee78db31faf538556c9
+    toStateId: 26d6e45a256f4cab905cf6be534f4e0f
+    transition: {fileID: 1479671234435583522}
+--- !u!114 &572609550601945941
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 361ae9970725468ca1e41a2cca21c035, type: 3}
+  m_Name: Transition
+  m_EditorClassIdentifier: FSMGraphModule::FSMModule.Graph.FsmBlackboardTransitionBehaviour
+  conditionMode: 0
+  conditions:
+  - parameterId: 339e680c24cc48b587cf061f985938ee
+    parameterKey: ShouldAttack
+    parameterType: 0
+    comparisonOperator: 0
+    boolValue: 1
+    intValue: 0
+    floatValue: 0
+--- !u!114 &1479671234435583522
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 361ae9970725468ca1e41a2cca21c035, type: 3}
+  m_Name: Transition
+  m_EditorClassIdentifier: FSMGraphModule::FSMModule.Graph.FsmBlackboardTransitionBehaviour
+  conditionMode: 0
+  conditions:
+  - parameterId: 339e680c24cc48b587cf061f985938ee
+    parameterKey: ShouldAttack
+    parameterType: 0
+    comparisonOperator: 1
+    boolValue: 0
+    intValue: 0
+    floatValue: 0
+--- !u!114 &3976816739760001127
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c28e350bba714106b6f268cf50ad510b, type: 3}
+  m_Name: State 3 DebugLogStateBehaviour
+  m_EditorClassIdentifier: FSMExampleModule::FSMModule.Examples.DebugLogStateBehaviour
+  enterMessage: Enter State
+  exitMessage: Exit State
+  logOnEnter: 1
+  logOnExit: 0
+--- !u!114 &4851881216021740901
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c28e350bba714106b6f268cf50ad510b, type: 3}
+  m_Name: Attack DebugLogStateBehaviour
+  m_EditorClassIdentifier: FSMExampleModule::FSMModule.Examples.DebugLogStateBehaviour
+  enterMessage: Enter State
+  exitMessage: Exit State
+  logOnEnter: 1
+  logOnExit: 0
+--- !u!114 &7490986455782445255
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c3585a862f0e4f8db209950dd9712ad1, type: 3}
+  m_Name: Patrol PatrolBetweenBindingsStateBehaviour
+  m_EditorClassIdentifier: FSMExampleModule::FSMModule.Examples.PatrolBetweenBindingsStateBehaviour
+  speed: 2
+  reachDistance: 0.05
